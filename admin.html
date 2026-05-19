@@ -744,7 +744,7 @@
                   onclick="document.getElementById('v-file-input').click()">
                   <div class="file-upload-icon">🎬</div>
                   <div class="file-upload-text">拖拽视频到此处，或 <span>点击选择文件</span></div>
-                  <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">支持 MP4 / WebM / MOV，建议 ≤ 50MB（存储于浏览器本地）</div>
+                  <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">支持 MP4 / WebM / MOV（存储于浏览器 IndexedDB，空间充足）</div>
                   <div id="v-file-name" style="font-size:0.8rem;color:#a78bfa;margin-top:6px;display:none;"></div>
                   <video id="v-video-preview" class="video-preview" controls muted></video>
                 </div>
@@ -894,60 +894,30 @@
   </div>
 </div>
 
+<!-- SHARED DB LAYER (IndexedDB) -->
+<script src="db.js"></script>
+
 <script>
 // ===== CONSTANTS =====
-const STORE_KEY='aigc_studio_data';
 const PWD_KEY='aigc_admin_pwd';
 const DEFAULT_PWD='admin123';
 
-// ===== DATA =====
-function getData(){
-  try{
-    const raw=localStorage.getItem(STORE_KEY);
-    return raw?JSON.parse(raw):{paintings:[],posters:[],videos:[],chars:[]};
-  }catch(e){return{paintings:[],posters:[],videos:[],chars:[]};}
-}
-function saveData(data){
-  try{
-    const json=JSON.stringify(data);
-    console.log('[AIGC] 数据大小:', (json.length/1024/1024).toFixed(2)+'MB');
-    localStorage.setItem(STORE_KEY,json);
-    // Verify save succeeded
-    const verify=localStorage.getItem(STORE_KEY);
-    if(!verify||verify.length!==json.length){
-      console.error('[AIGC] 数据保存验证失败');
-      showToast('数据保存可能不完整，请检查存储空间','error');
-      return false;
-    }
-    updateStorageInfo();
-    return true;
-  }catch(e){
-    console.error('[AIGC] 保存失败:',e);
-    if(e.name==='QuotaExceededError'||e.code===22){
-      showToast('存储空间已满！请删除部分旧作品或减小图片尺寸','error');
-    }else{
-      showToast('数据保存失败: '+e.message,'error');
-    }
-    return false;
-  }
-}
-function getStorageInfo(){
-  let total=0;
-  for(let i=0;i<localStorage.length;i++){
-    const key=localStorage.key(i);
-    total+=((localStorage.getItem(key)||'').length);
-  }
-  return total;
-}
-function updateStorageInfo(){
+// ===== DATA (now using IndexedDB via db.js) =====
+async function updateStorageInfo(){
   const el=document.getElementById('storageInfo');
   if(!el) return;
-  const bytes=getStorageInfo();
-  const mb=(bytes/1024/1024).toFixed(2);
-  const pct=Math.min((bytes/5/1024/1024*100),100);
-  const color=pct>80?'#ef4444':pct>50?'#f59e0b':'#22c55e';
-  el.innerHTML=`<span style="color:${color}">📊 存储: ${mb} MB / 5 MB (${Math.round(pct)}%)</span>`;
+  const est=await getStorageEstimate();
+  if(est.quota>0){
+    const usageStr=formatBytes(est.usage);
+    const quotaStr=formatBytes(est.quota);
+    const pct=Math.min((est.usage/est.quota*100),100);
+    const color=pct>80?'#ef4444':pct>50?'#f59e0b':'#22c55e';
+    el.innerHTML=`<span style="color:${color}">📊 存储已用: ${usageStr} / ${quotaStr} (${Math.round(pct)}%)</span>`;
+  }else{
+    el.innerHTML=`<span style="color:#22c55e">📊 存储: IndexedDB (容量充足)</span>`;
+  }
 }
+
 function getPwd(){return localStorage.getItem(PWD_KEY)||DEFAULT_PWD;}
 
 // ===== CURRENT FILTER STATE =====
@@ -1164,8 +1134,8 @@ function dropFile(e,inputId,previewId){
 }
 
 // ===== ADD WORK =====
-function addWork(type){
-  const data=getData();
+async function addWork(type){
+  const data=await getData();
   let item={id:Date.now().toString()+Math.random().toString(36).substr(2,4),visible:true,likes:0,createdAt:new Date().toISOString()};
 
   if(type==='painting'){
@@ -1222,9 +1192,9 @@ function addWork(type){
 
   saveData(data);
   resetForm(type);
-  refreshAll();
+  await refreshAll();
   // Double-check: verify the item was actually saved
-  const verifyData=getData();
+  const verifyData=await getData();
   const verifyItem=verifyData[type==='painting'?'paintings':type==='poster'?'posters':type==='video'?'videos':'chars'].find(i=>i.id===item.id);
   if(verifyItem){
     showToast('作品添加成功 ✓');
@@ -1268,8 +1238,8 @@ function resetForm(type){
 }
 
 // ===== TOGGLE VISIBLE =====
-function toggleVisible(type,id){
-  const data=getData();
+async function toggleVisible(type,id){
+  const data=await getData();
   let arr;
   if(type==='painting') arr=data.paintings;
   else if(type==='poster') arr=data.posters;
@@ -1289,27 +1259,28 @@ function closeConfirm(){
   document.getElementById('confirmOverlay').classList.remove('show');
   pendingDelete={type:null,id:null};
 }
-document.getElementById('confirmOk').onclick=()=>{
+document.getElementById('confirmOk').onclick=async ()=>{
   const{type,id}=pendingDelete;
   if(!type||!id){closeConfirm();return;}
-  const data=getData();
+  const data=await getData();
   if(type==='painting') data.paintings=data.paintings.filter(i=>i.id!==id);
   else if(type==='poster') data.posters=data.posters.filter(i=>i.id!==id);
   else if(type==='video') data.videos=data.videos.filter(i=>i.id!==id);
   else if(type==='char') data.chars=data.chars.filter(i=>i.id!==id);
   saveData(data);
   closeConfirm();
-  refreshAll();
+  await refreshAll();
   showToast('已删除作品');
 };
 
 // ===== FILTER =====
-function filterWorks(type,filter,el){
+async function filterWorks(type,filter,el){
   filterState[type]=filter;
   const container=el.closest('.works-table-header');
   container.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  renderList(type,getData());
+  const data=await getData();
+  renderList(type,data);
 }
 
 // ===== RENDER LISTS =====
@@ -1410,8 +1381,8 @@ function updateOverview(data){
   document.getElementById('badge-char').textContent=data.chars.length;
 }
 
-function refreshAll(){
-  const data=getData();
+async function refreshAll(){
+  const data=await getData();
   updateOverview(data);
   updateStorageInfo();
   renderList('painting',data);
@@ -1433,8 +1404,8 @@ function changePwd(){
 }
 
 // ===== DATA EXPORT / IMPORT =====
-function exportData(){
-  const data=getData();
+async function exportData(){
+  const data=await getData();
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -1444,18 +1415,18 @@ function exportData(){
   showToast('数据导出成功');
 }
 function importData(){document.getElementById('import-input').click();}
-function handleImport(e){
+async function handleImport(e){
   const file=e.target.files[0];
   if(!file) return;
   const reader=new FileReader();
-  reader.onload=ev=>{
+  reader.onload=async ev=>{
     try{
       const data=JSON.parse(ev.target.result);
       if(!data.paintings||!data.posters||!data.videos||!data.chars){
         showToast('数据格式不正确','error');return;
       }
-      saveData(data);
-      refreshAll();
+      await saveData(data);
+      await refreshAll();
       showToast('数据导入成功 ✓');
     }catch(err){
       showToast('解析失败，请检查文件格式','error');
@@ -1485,13 +1456,13 @@ if(isLoggedIn){
   refreshAll();
 }
 
-function doLogin(){
+async function doLogin(){
   const val=document.getElementById('pwdInput').value;
   if(val===getPwd()){
     sessionStorage.setItem('aigc_admin_logged',getPwd());
     document.getElementById('loginOverlay').style.display='none';
     document.getElementById('adminLayout').classList.add('visible');
-    refreshAll();
+    await refreshAll();
   }else{
     document.getElementById('loginErr').textContent='密码错误，请重试';
     document.getElementById('pwdInput').value='';

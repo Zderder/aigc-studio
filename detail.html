@@ -397,24 +397,12 @@
   <img id="fullscreenImg" src="" alt="">
 </div>
 
+<!-- SHARED DB LAYER (IndexedDB) -->
+<script src="db.js"></script>
+
 <script>
 // ===== CONSTANTS =====
-const STORE_KEY='aigc_studio_data';
-
-function getData(){
-  try{
-    const raw=localStorage.getItem(STORE_KEY);
-    if(!raw){
-      console.log('[AIGC Detail] localStorage 为空');
-      return{paintings:[],posters:[],videos:[],chars:[]};
-    }
-    const data=JSON.parse(raw);
-    return data;
-  }catch(e){
-    console.error('[AIGC Detail] 数据解析失败:',e);
-    return{paintings:[],posters:[],videos:[],chars:[]};
-  }
-}
+// getData() and saveData() are provided by db.js
 
 // ===== PARSE URL PARAMS =====
 const params=new URLSearchParams(window.location.search);
@@ -489,12 +477,12 @@ function getVideoEmbedInfo(url){
 // ===== RENDER DETAIL =====
 let currentImages=[],currentImageIndex=0;
 
-function renderDetail(){
+async function renderDetail(){
   if(!itemId||!itemType){
     console.log('[AIGC Detail] 缺少参数, id='+itemId+' type='+itemType);
     renderNotFound('缺少作品参数');return;
   }
-  const data=getData();
+  const data=await getData();
   console.log('[AIGC Detail] 查找作品 id='+itemId+' type='+itemType);
   let item=null;
   let typeLabel='',badgeClass='',sectionId='';
@@ -804,9 +792,9 @@ document.getElementById('fullscreenOverlay').onclick=function(e){
 };
 
 // ===== LIKE TOGGLE =====
-function toggleLike(){
+async function toggleLike(){
   if(!itemId||!itemType) return;
-  const data=getData();
+  const data=await getData();
   let arr;
   if(itemType==='painting') arr=data.paintings;
   else if(itemType==='poster') arr=data.posters;
@@ -815,7 +803,7 @@ function toggleLike(){
   const item=arr.find(i=>i.id===itemId);
   if(!item) return;
   item.likes=(item.likes||0)?0:1;
-  localStorage.setItem(STORE_KEY,JSON.stringify(data));
+  await saveData(data);
   // Update UI
   const btn=document.getElementById('likeBtn');
   const icon=document.getElementById('likeIcon');

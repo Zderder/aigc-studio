@@ -678,6 +678,9 @@
 </div>
 
 
+<!-- SHARED DB LAYER (IndexedDB) -->
+<script src="db.js"></script>
+
 <script>
 // ===== NEURAL CANVAS =====
 (function(){
@@ -758,25 +761,8 @@ window.addEventListener('load',()=>{
   },1800);
 });
 
-// ===== DATA STORE (localStorage) =====
-const STORE_KEY='aigc_studio_data';
-
-function getData(){
-  try{
-    const raw=localStorage.getItem(STORE_KEY);
-    if(!raw){
-      console.log('[AIGC] localStorage 为空，无作品数据');
-      return{paintings:[],posters:[],videos:[],chars:[]};
-    }
-    const data=JSON.parse(raw);
-    const total=data.paintings.length+data.posters.length+data.videos.length+data.chars.length;
-    console.log('[AIGC] 加载成功，共',total,'件作品 (绘画:'+data.paintings.length+' 海报:'+data.posters.length+' 视频:'+data.videos.length+' 字符:'+data.chars.length+')');
-    return data;
-  }catch(e){
-    console.error('[AIGC] 数据解析失败:',e);
-    return{paintings:[],posters:[],videos:[],chars:[]};
-  }
-}
+// ===== DATA STORE (IndexedDB via db.js) =====
+// getData() and saveData() are provided by db.js
 
 // ===== RENDER FUNCTIONS =====
 function renderPaintings(data){
@@ -916,8 +902,8 @@ function updateStats(data){
   document.getElementById('statChar').textContent=c;
 }
 
-function renderAll(){
-  const data=getData();
+async function renderAll(){
+  const data=await getData();
   renderPaintings(data);
   renderPosters(data);
   renderVideos(data);
@@ -933,38 +919,23 @@ function goDetail(id,type){
 // ===== INIT =====
 renderAll();
 
-// listen for storage changes (from admin page)
-window.addEventListener('storage',()=>renderAll());
+// listen for data changes from admin page (via localStorage notification from db.js)
+window.addEventListener('storage',function(e){
+  if(e.key==='aigc_studio_data_v') renderAll();
+});
 
 // ===== DEBUG CONSOLE INFO =====
-(function(){
+(async function(){
   try{
-    const raw=localStorage.getItem(STORE_KEY);
-    if(!raw){
-      console.warn('[AIGC] ⚠️ localStorage 中没有作品数据！请在后台管理页面上传作品 (admin.html)');
-    }else{
-      const data=JSON.parse(raw);
-      const total=data.paintings.length+data.posters.length+data.videos.length+data.chars.length;
-      const visibleTotal=data.paintings.filter(i=>i.visible).length+data.posters.filter(i=>i.visible).length+data.videos.filter(i=>i.visible).length+data.chars.filter(i=>i.visible).length;
-      console.log('[AIGC] ✓ 已加载 '+total+' 件作品，其中 '+visibleTotal+' 件可见');
-      if(total>0&&visibleTotal===0){
-        console.warn('[AIGC] ⚠️ 所有作品均处于下架状态！请在后台管理页面开启上架');
-      }
-      // Check each item for valid image data
-      [data.paintings,data.posters,data.videos,data.chars].forEach((arr,typeIdx)=>{
-        const names=['paintings','posters','videos','chars'];
-        arr.forEach(item=>{
-          const hasImgs=item.imgs&&item.imgs.length>0;
-          const hasImg=item.img&&item.img.length>10;
-          const hasVideo=item.videoData&&item.videoData.length>10;
-          if(!hasImgs&&!hasImg&&!hasVideo&&item.visible){
-            console.warn('[AIGC] ⚠️ 作品 "'+item.title+'" ('+names[typeIdx]+') 已上架但缺少图片/视频数据');
-          }
-        });
-      });
+    const data=await getData();
+    const total=data.paintings.length+data.posters.length+data.videos.length+data.chars.length;
+    const visibleTotal=data.paintings.filter(i=>i.visible).length+data.posters.filter(i=>i.visible).length+data.videos.filter(i=>i.visible).length+data.chars.filter(i=>i.visible).length;
+    console.log('[AIGC] Loaded '+total+' works, '+visibleTotal+' visible (IndexedDB)');
+    if(total>0&&visibleTotal===0){
+      console.warn('[AIGC] All works are hidden! Enable them in admin panel.');
     }
   }catch(e){
-    console.error('[AIGC] 数据检查出错:',e);
+    console.error('[AIGC] Data check error:',e);
   }
 })();
 
