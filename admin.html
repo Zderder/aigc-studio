@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIGC Studio · 后台管理</title>
+<style>
+  :root{
+    --accent:#7c3aed;
+    --accent2:#06b6d4;
+    --accent3:#f59e0b;
+    --accent4:#ec4899;
+    --bg:#040812;
+    --bg-panel:rgba(13,16,35,0.95);
+    --bg-card:rgba(18,22,44,0.8);
+    --bg-input:rgba(8,10,22,0.8);
+    --border:rgba(255,255,255,0.08);
+    --border-focus:rgba(124,58,237,0.5);
+    --text-primary:#f0f4ff;
+    --text-secondary:#94a3b8;
+    --danger:#ef4444;
+    --success:#22c55e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--bg);color:var(--text-primary);
+    font-family:'Segoe UI',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  a{text-decoration:none;}
+
+  /* ===== GRID BG ===== */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:0;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(124,58,237,0.05) 1px,transparent 1px);
+    background-size:50px 50px;
+    pointer-events:none;
+  }
+  body::after{
+    content:'';position:fixed;inset:0;z-index:0;
+    background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(124,58,237,0.12),transparent 70%);
+    pointer-events:none;
+  }
+
+  /* ===== LOGIN OVERLAY ===== */
+  #loginOverlay{
+    position:fixed;inset:0;z-index:500;
+    background:rgba(4,8,18,0.97);
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(12px);
+  }
+  .login-box{
+    background:var(--bg-card);
+    border:1px solid rgba(124,58,237,0.25);
+    border-radius:20px;
+    padding:40px 40px 36px;
+    width:360px;
+    box-shadow:0 0 60px rgba(124,58,237,0.15);
+    position:relative;z-index:1;
+  }
+  .login-logo{
+    text-align:center;margin-bottom:28px;
+  }
+  .login-logo .logo-text{
+    font-size:1.4rem;font-weight:800;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .login-logo .logo-sub{
+    font-size:0.8rem;color:var(--text-secondary);
+    margin-top:4px;letter-spacing:0.05em;
+  }
+  .login-label{
+    font-size:0.8rem;color:var(--text-secondary);
+    margin-bottom:6px;display:block;letter-spacing:0.04em;
+  }
+  .login-input{
+    width:100%;padding:10px 14px;
+    background:var(--bg-input);
+    border:1px solid var(--border);
+    border-radius:8px;color:var(--text-primary);
+    font-size:0.95rem;outline:none;
+    transition:border-color .2s;margin-bottom:16px;
+  }
+  .login-input:focus{border-color:var(--border-focus);}
+  .login-btn{
+    width:100%;padding:11px;border-radius:8px;
+    background:linear-gradient(135deg,#7c3aed,#5b21b6);
+    color:#fff;border:none;cursor:pointer;
+    font-size:0.95rem;font-weight:600;letter-spacing:0.04em;
+    transition:all .2s;
+    box-shadow:0 0 20px rgba(124,58,237,0.25);
+  }
+  .login-btn:hover{box-shadow:0 0 30px rgba(124,58,237,0.4);transform:translateY(-1px);}
+  .login-err{
+    color:#f87171;font-size:0.8rem;
+    text-align:center;margin-top:10px;min-height:18px;
+  }
+  .back-link{
+    display:block;text-align:center;margin-top:16px;
+    font-size:0.82rem;color:var(--text-secondary);
+    transition:color .2s;
+  }
+  .back-link:hover{color:var(--text-primary);}
+
+  /* ===== MAIN LAYOUT ===== */
+  .admin-layout{
+    display:none;position:relative;z-index:1;
+    min-height:100vh;
+  }
+  .admin-layout.visible{display:flex;}
+
+  /* ===== SIDEBAR ===== */
+  .sidebar{
+    width:230px;flex-shrink:0;
+    background:var(--bg-panel);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;
+    min-height:100vh;position:sticky;top:0;
+  }
+  .sidebar-logo{
+    padding:24px 20px 20px;
+    border-bottom:1px solid var(--border);
+  }
+  .sidebar-logo .logo-text{
+    font-size:1rem;font-weight:700;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .sidebar-logo .logo-sub{
+    font-size:0.72rem;color:var(--text-secondary);
+    margin-top:2px;
+  }
+  .sidebar-nav{flex:1;padding:12px 0;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 20px;cursor:pointer;
+    font-size:0.88rem;color:var(--text-secondary);
+    transition:all .2s;border-left:3px solid transparent;
+    user-select:none;
+  }
+  .nav-item:hover{color:var(--text-primary);background:rgba(124,58,237,0.06);}
+  .nav-item.active{
+    color:var(--accent);
+    background:rgba(124,58,237,0.1);
+    border-left-color:var(--accent);
+  }
+  .nav-item .nav-icon{font-size:1rem;}
+  .nav-item .nav-badge{
+    margin-left:auto;
+    background:rgba(124,58,237,0.2);
+    color:rgba(124,58,237,0.9);
+    font-size:0.7rem;padding:2px 7px;
+    border-radius:100px;
+  }
+  .sidebar-footer{
+    padding:16px 20px;
+    border-top:1px solid var(--border);
+  }
+  .logout-btn{
+    width:100%;padding:8px;border-radius:6px;
+    border:1px solid rgba(239,68,68,0.25);
+    background:rgba(239,68,68,0.05);
+    color:rgba(239,68,68,0.7);
+    font-size:0.82rem;cursor:pointer;
+    transition:all .2s;
+  }
+  .logout-btn:hover{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.4);color:#ef4444;}
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content{
+    flex:1;display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  .admin-topbar{
+    padding:16px 28px;
+    background:var(--bg-panel);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;
+  }
+  .topbar-title{
+    font-size:1.05rem;font-weight:600;
+  }
+  .topbar-actions{display:flex;gap:10px;align-items:center;}
+  .topbar-link{
+    font-size:0.82rem;color:var(--accent2);
+    border:1px solid rgba(6,182,212,0.2);
+    padding:5px 14px;border-radius:6px;
+    background:rgba(6,182,212,0.05);
+    transition:all .2s;
+  }
+  .topbar-link:hover{background:rgba(6,182,212,0.1);}
+
+  .content-area{
+    flex:1;padding:24px 28px;overflow-y:auto;
+  }
+
+  /* ===== TABS ===== */
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* ===== OVERVIEW STATS ===== */
+  .stats-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:16px;margin-bottom:28px;
+  }
+  .stat-card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:12px;padding:18px 20px;
+  }
+  .stat-card-label{font-size:0.78rem;color:var(--text-secondary);margin-bottom:6px;letter-spacing:0.04em;}
+  .stat-card-num{font-size:2rem;font-weight:800;}
+  .stat-card-num.purple{color:#a78bfa;}
+  .stat-card-num.amber{color:#fcd34d;}
+  .stat-card-num.pink{color:#f9a8d4;}
+  .stat-card-num.cyan{color:#67e8f9;}
+  .stat-card-sub{font-size:0.75rem;color:var(--text-secondary);margin-top:4px;}
+
+  /* ===== UPLOAD FORM ===== */
+  .upload-area{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;padding:24px;
+    margin-bottom:24px;
+  }
+  .upload-area h3{
+    font-size:0.95rem;font-weight:600;
+    margin-bottom:16px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  .form-group.full{grid-column:1/-1;}
+  .form-label{font-size:0.78rem;color:var(--text-secondary);letter-spacing:0.04em;}
+  .form-input,.form-textarea,.form-select{
+    padding:9px 12px;
+    background:var(--bg-input);
+    border:1px solid var(--border);
+    border-radius:8px;color:var(--text-primary);
+    font-size:0.88rem;outline:none;
+    transition:border-color .2s;
+    font-family:inherit;
+  }
+  .form-input:focus,.form-textarea:focus,.form-select:focus{
+    border-color:var(--border-focus);
+  }
+  .form-textarea{resize:vertical;min-height:72px;}
+  .form-select option{background:#0d1030;color:#f0f4ff;}
+
+  /* ===== FILE UPLOAD ===== */
+  .file-upload-zone{
+    border:1.5px dashed rgba(124,58,237,0.3);
+    border-radius:10px;padding:24px;
+    text-align:center;cursor:pointer;
+    transition:all .2s;background:rgba(124,58,237,0.03);
+    grid-column:1/-1;
+  }
+  .file-upload-zone:hover{
+    border-color:rgba(124,58,237,0.5);
+    background:rgba(124,58,237,0.06);
+  }
+  .file-upload-zone.dragover{
+    border-color:var(--accent);
+    background:rgba(124,58,237,0.1);
+  }
+  .file-upload-icon{font-size:2rem;margin-bottom:8px;}
+  .file-upload-text{font-size:0.85rem;color:var(--text-secondary);}
+  .file-upload-text span{color:var(--accent);cursor:pointer;}
+  .file-preview{
+    max-width:200px;max-height:140px;
+    object-fit:contain;border-radius:8px;
+    margin-top:10px;display:none;
+  }
+  .video-preview{
+    width:100%;max-width:340px;max-height:200px;
+    border-radius:8px;margin-top:10px;display:none;
+    background:#000;
+  }
+  .upload-mode-tabs{
+    display:flex;gap:6px;margin-bottom:10px;
+  }
+  .upload-mode-tab{
+    padding:4px 14px;border-radius:6px;
+    border:1px solid var(--border);
+    background:transparent;color:var(--text-secondary);
+    font-size:0.8rem;cursor:pointer;transition:all .2s;
+  }
+  .upload-mode-tab.active{
+    background:rgba(236,72,153,0.12);
+    border-color:rgba(236,72,153,0.3);
+    color:#f9a8d4;
+  }
+  .upload-hidden{display:none;}
+
+  /* ===== FORM ACTIONS ===== */
+  .form-actions{
+    display:flex;gap:10px;margin-top:16px;
+  }
+  .btn-submit{
+    padding:9px 20px;border-radius:8px;
+    background:linear-gradient(135deg,#7c3aed,#5b21b6);
+    color:#fff;border:none;cursor:pointer;
+    font-size:0.88rem;font-weight:600;
+    transition:all .2s;
+  }
+  .btn-submit:hover{box-shadow:0 0 20px rgba(124,58,237,0.3);transform:translateY(-1px);}
+  .btn-reset{
+    padding:9px 20px;border-radius:8px;
+    border:1px solid var(--border);
+    background:transparent;color:var(--text-secondary);
+    cursor:pointer;font-size:0.88rem;
+    transition:all .2s;
+  }
+  .btn-reset:hover{border-color:rgba(255,255,255,0.2);color:var(--text-primary);}
+
+  /* ===== WORKS TABLE ===== */
+  .works-table-wrap{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;overflow:hidden;
+  }
+  .works-table-header{
+    padding:16px 20px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--border);
+  }
+  .works-table-header h3{font-size:0.95rem;font-weight:600;}
+  .filter-tabs{display:flex;gap:6px;}
+  .filter-tab{
+    padding:4px 12px;border-radius:6px;
+    border:1px solid var(--border);
+    background:transparent;color:var(--text-secondary);
+    font-size:0.78rem;cursor:pointer;transition:all .2s;
+  }
+  .filter-tab.active{
+    background:rgba(124,58,237,0.12);
+    border-color:rgba(124,58,237,0.3);
+    color:#a78bfa;
+  }
+  .works-table{width:100%;border-collapse:collapse;}
+  .works-table th{
+    text-align:left;padding:10px 16px;
+    font-size:0.75rem;color:var(--text-secondary);
+    letter-spacing:0.06em;font-weight:500;
+    border-bottom:1px solid var(--border);
+    text-transform:uppercase;
+  }
+  .works-table td{
+    padding:12px 16px;
+    border-bottom:1px solid rgba(255,255,255,0.03);
+    font-size:0.85rem;vertical-align:middle;
+  }
+  .works-table tr:last-child td{border-bottom:none;}
+  .works-table tr:hover td{background:rgba(124,58,237,0.03);}
+  .table-thumb{
+    width:48px;height:36px;
+    border-radius:6px;object-fit:cover;
+    background:rgba(124,58,237,0.1);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:1.2rem;overflow:hidden;
+  }
+  .table-thumb img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+  .type-badge{
+    font-size:0.7rem;padding:2px 8px;border-radius:100px;
+    display:inline-block;
+  }
+  .status-toggle{
+    display:flex;align-items:center;gap:8px;
+    font-size:0.78rem;
+  }
+  .toggle-switch{
+    position:relative;width:38px;height:20px;cursor:pointer;
+  }
+  .toggle-switch input{display:none;}
+  .toggle-slider{
+    position:absolute;inset:0;border-radius:10px;
+    background:rgba(255,255,255,0.12);
+    transition:background .2s;
+  }
+  .toggle-switch input:checked + .toggle-slider{background:#7c3aed;}
+  .toggle-slider::before{
+    content:'';position:absolute;
+    left:2px;top:2px;
+    width:16px;height:16px;border-radius:50%;
+    background:#fff;transition:transform .2s;
+  }
+  .toggle-switch input:checked + .toggle-slider::before{
+    transform:translateX(18px);
+  }
+  .action-btns{display:flex;gap:6px;}
+  .btn-icon{
+    width:28px;height:28px;border-radius:6px;
+    border:1px solid var(--border);background:transparent;
+    color:var(--text-secondary);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.85rem;transition:all .2s;
+  }
+  .btn-icon:hover{border-color:var(--danger);color:var(--danger);background:rgba(239,68,68,0.08);}
+  .btn-icon.edit:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,58,237,0.08);}
+
+  /* ===== EMPTY TABLE ===== */
+  .table-empty{
+    padding:40px 20px;text-align:center;
+    color:var(--text-secondary);font-size:0.88rem;
+  }
+  .table-empty .empty-icon{font-size:2rem;margin-bottom:10px;}
+
+  /* ===== TOAST ===== */
+  .toast{
+    position:fixed;bottom:28px;right:28px;z-index:600;
+    padding:12px 20px;border-radius:10px;
+    background:rgba(13,16,35,0.95);
+    border:1px solid rgba(34,197,94,0.3);
+    color:#86efac;
+    font-size:0.88rem;
+    transform:translateY(80px);opacity:0;
+    transition:all .3s;
+    pointer-events:none;
+    display:flex;align-items:center;gap:8px;
+    backdrop-filter:blur(12px);
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  }
+  .toast.error{border-color:rgba(239,68,68,0.3);color:#fca5a5;}
+  .toast.show{transform:translateY(0);opacity:1;}
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar{width:5px;}
+  ::-webkit-scrollbar-track{background:#040812;}
+  ::-webkit-scrollbar-thumb{background:rgba(124,58,237,0.3);border-radius:3px;}
+
+  /* ===== CONFIRM DIALOG ===== */
+  .confirm-overlay{
+    display:none;position:fixed;inset:0;z-index:400;
+    background:rgba(0,0,0,0.7);
+    align-items:center;justify-content:center;
+    backdrop-filter:blur(4px);
+  }
+  .confirm-overlay.show{display:flex;}
+  .confirm-box{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;padding:28px 28px 24px;
+    width:340px;
+    box-shadow:0 0 40px rgba(0,0,0,0.5);
+  }
+  .confirm-title{font-size:1rem;font-weight:600;margin-bottom:8px;}
+  .confirm-text{font-size:0.85rem;color:var(--text-secondary);margin-bottom:20px;line-height:1.5;}
+  .confirm-actions{display:flex;gap:10px;justify-content:flex-end;}
+  .btn-cancel{
+    padding:8px 18px;border-radius:7px;
+    border:1px solid var(--border);background:transparent;
+    color:var(--text-secondary);cursor:pointer;font-size:0.85rem;
+    transition:all .2s;
+  }
+  .btn-cancel:hover{border-color:rgba(255,255,255,0.2);color:var(--text-primary);}
+  .btn-danger{
+    padding:8px 18px;border-radius:7px;
+    border:none;background:#dc2626;
+    color:#fff;cursor:pointer;font-size:0.85rem;
+    font-weight:600;transition:all .2s;
+  }
+  .btn-danger:hover{background:#ef4444;}
+
+  @media(max-width:900px){
+    .sidebar{width:200px;}
+    .form-grid{grid-template-columns:1fr;}
+    .form-group.full{grid-column:1;}
+  }
+  @media(max-width:640px){
+    .admin-layout{flex-direction:column;}
+    .sidebar{width:100%;min-height:auto;flex-direction:row;flex-wrap:wrap;}
+    .sidebar-nav{display:flex;flex-direction:row;flex-wrap:wrap;padding:8px;}
+    .nav-item{flex-direction:column;gap:4px;padding:8px 12px;border-left:none;border-bottom:3px solid transparent;font-size:0.75rem;}
+    .nav-item.active{border-left:none;border-bottom-color:var(--accent);}
+    .sidebar-footer{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-text">AIGC STUDIO</div>
+      <div class="logo-sub">后台管理系统</div>
+    </div>
+    <label class="login-label">管理员密码</label>
+    <input type="password" class="login-input" id="pwdInput"
+      placeholder="请输入管理密码" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">进入后台</button>
+    <div class="login-err" id="loginErr"></div>
+    <a href="index.html" class="back-link">← 返回展示页面</a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="admin-layout" id="adminLayout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">AIGC STUDIO</div>
+      <div class="logo-sub">内容管理系统</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-tab="overview" onclick="switchTab('overview',this)">
+        <span class="nav-icon">📊</span> 总览
+      </div>
+      <div class="nav-item" data-tab="painting" onclick="switchTab('painting',this)">
+        <span class="nav-icon">🎨</span> AI绘画
+        <span class="nav-badge" id="badge-painting">0</span>
+      </div>
+      <div class="nav-item" data-tab="poster" onclick="switchTab('poster',this)">
+        <span class="nav-icon">🪧</span> AI海报
+        <span class="nav-badge" id="badge-poster">0</span>
+      </div>
+      <div class="nav-item" data-tab="video" onclick="switchTab('video',this)">
+        <span class="nav-icon">🎬</span> AI视频
+        <span class="nav-badge" id="badge-video">0</span>
+      </div>
+      <div class="nav-item" data-tab="char" onclick="switchTab('char',this)">
+        <span class="nav-icon">✨</span> 超级字符
+        <span class="nav-badge" id="badge-char">0</span>
+      </div>
+      <div class="nav-item" data-tab="settings" onclick="switchTab('settings',this)">
+        <span class="nav-icon">⚙️</span> 设置
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="doLogout()">退出登录</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <header class="admin-topbar">
+      <div class="topbar-title" id="topbarTitle">总览</div>
+      <div class="topbar-actions">
+        <a href="index.html" target="_blank" class="topbar-link">🔗 查看前台</a>
+        <button class="logout-btn" style="margin-left:8px;width:auto;padding:6px 14px;font-size:0.8rem;" onclick="doLogout()">退出</button>
+      </div>
+    </header>
+    <div class="content-area">
+
+      <!-- ===== OVERVIEW ===== -->
+      <div class="tab-panel active" id="tab-overview">
+        <div class="stats-grid" id="overviewStats">
+          <div class="stat-card">
+            <div class="stat-card-label">总作品数</div>
+            <div class="stat-card-num purple" id="ov-total">0</div>
+            <div class="stat-card-sub">已上架作品</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">AI绘画</div>
+            <div class="stat-card-num purple" id="ov-painting">0</div>
+            <div class="stat-card-sub">件作品</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">AI海报</div>
+            <div class="stat-card-num amber" id="ov-poster">0</div>
+            <div class="stat-card-sub">件作品</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">AI视频</div>
+            <div class="stat-card-num pink" id="ov-video">0</div>
+            <div class="stat-card-sub">件作品</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">超级字符</div>
+            <div class="stat-card-num cyan" id="ov-char">0</div>
+            <div class="stat-card-sub">件作品</div>
+          </div>
+        </div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:28px;text-align:center;color:var(--text-secondary);">
+          <div style="font-size:2rem;margin-bottom:12px;">🚀</div>
+          <div style="font-size:0.95rem;margin-bottom:6px;font-weight:600;color:var(--text-primary);">欢迎使用 AIGC Studio 后台</div>
+          <div style="font-size:0.85rem;line-height:1.6;">从左侧菜单选择分类，上传并管理你的 AI 创作作品。<br>通过上架/下架开关控制作品是否在前台展示。</div>
+        </div>
+      </div>
+
+      <!-- ===== AI 绘画 ===== -->
+      <div class="tab-panel" id="tab-painting">
+        <div class="upload-area">
+          <h3>🎨 上传 AI 绘画作品</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">作品标题 *</label>
+              <input class="form-input" id="p-title" placeholder="输入作品名称">
+            </div>
+            <div class="form-group">
+              <label class="form-label">AI 模型 / 工具</label>
+              <input class="form-input" id="p-tool" placeholder="Midjourney / Stable Diffusion...">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">作品描述</label>
+              <textarea class="form-textarea" id="p-desc" placeholder="描述这幅作品的创作思路、Prompt 或故事..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">上传图片</label>
+              <div class="file-upload-zone" id="p-zone"
+                ondragover="dragOver(event,'p-zone')"
+                ondragleave="dragLeave('p-zone')"
+                ondrop="dropFile(event,'p-img-input','p-preview')"
+                onclick="document.getElementById('p-img-input').click()">
+                <div class="file-upload-icon">🖼️</div>
+                <div class="file-upload-text">拖拽图片到此处，或 <span>点击选择文件</span></div>
+                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">支持 JPG / PNG / WebP / GIF，建议宽度 ≥ 800px</div>
+                <img id="p-preview" class="file-preview" alt="预览">
+              </div>
+              <input type="file" id="p-img-input" class="upload-hidden" accept="image/*"
+                onchange="previewFile(this,'p-preview','p-zone')">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="addWork('painting')">✓ 添加作品</button>
+            <button class="btn-reset" onclick="resetForm('painting')">重置</button>
+          </div>
+        </div>
+        <div class="works-table-wrap">
+          <div class="works-table-header">
+            <h3>作品列表</h3>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterWorks('painting','all',this)">全部</button>
+              <button class="filter-tab" onclick="filterWorks('painting','visible',this)">已上架</button>
+              <button class="filter-tab" onclick="filterWorks('painting','hidden',this)">已下架</button>
+            </div>
+          </div>
+          <div id="painting-list"></div>
+        </div>
+      </div>
+
+      <!-- ===== AI 海报 ===== -->
+      <div class="tab-panel" id="tab-poster">
+        <div class="upload-area">
+          <h3>🪧 上传 AI 海报作品</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">海报标题 *</label>
+              <input class="form-input" id="po-title" placeholder="输入海报名称">
+            </div>
+            <div class="form-group">
+              <label class="form-label">设计工具</label>
+              <input class="form-input" id="po-tool" placeholder="Adobe Firefly / DALL-E...">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">作品描述</label>
+              <textarea class="form-textarea" id="po-desc" placeholder="描述这张海报的主题、风格或使用场景..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">上传图片</label>
+              <div class="file-upload-zone" id="po-zone"
+                ondragover="dragOver(event,'po-zone')"
+                ondragleave="dragLeave('po-zone')"
+                ondrop="dropFile(event,'po-img-input','po-preview')"
+                onclick="document.getElementById('po-img-input').click()">
+                <div class="file-upload-icon">📋</div>
+                <div class="file-upload-text">拖拽图片到此处，或 <span>点击选择文件</span></div>
+                <img id="po-preview" class="file-preview" alt="预览">
+              </div>
+              <input type="file" id="po-img-input" class="upload-hidden" accept="image/*"
+                onchange="previewFile(this,'po-preview','po-zone')">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="addWork('poster')">✓ 添加作品</button>
+            <button class="btn-reset" onclick="resetForm('poster')">重置</button>
+          </div>
+        </div>
+        <div class="works-table-wrap">
+          <div class="works-table-header">
+            <h3>海报列表</h3>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterWorks('poster','all',this)">全部</button>
+              <button class="filter-tab" onclick="filterWorks('poster','visible',this)">已上架</button>
+              <button class="filter-tab" onclick="filterWorks('poster','hidden',this)">已下架</button>
+            </div>
+          </div>
+          <div id="poster-list"></div>
+        </div>
+      </div>
+
+      <!-- ===== AI 视频 ===== -->
+      <div class="tab-panel" id="tab-video">
+        <div class="upload-area">
+          <h3>🎬 上传 AI 视频作品</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">视频标题 *</label>
+              <input class="form-input" id="v-title" placeholder="输入视频名称">
+            </div>
+            <div class="form-group">
+              <label class="form-label">生成工具</label>
+              <input class="form-input" id="v-tool" placeholder="Sora / Runway / Kling...">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">作品描述</label>
+              <textarea class="form-textarea" id="v-desc" placeholder="描述视频的内容、创作背景..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">视频来源</label>
+              <div class="upload-mode-tabs">
+                <button class="upload-mode-tab active" id="v-mode-file" onclick="switchVideoMode('file')">📁 上传本地视频</button>
+                <button class="upload-mode-tab" id="v-mode-url" onclick="switchVideoMode('url')">🔗 填写视频链接</button>
+              </div>
+              <!-- 本地视频上传 -->
+              <div id="v-panel-file">
+                <div class="file-upload-zone" id="v-zone"
+                  ondragover="dragOver(event,'v-zone')"
+                  ondragleave="dragLeave('v-zone')"
+                  ondrop="dropVideoFile(event)"
+                  onclick="document.getElementById('v-file-input').click()">
+                  <div class="file-upload-icon">🎬</div>
+                  <div class="file-upload-text">拖拽视频到此处，或 <span>点击选择文件</span></div>
+                  <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">支持 MP4 / WebM / MOV，建议 ≤ 50MB（存储于浏览器本地）</div>
+                  <div id="v-file-name" style="font-size:0.8rem;color:#a78bfa;margin-top:6px;display:none;"></div>
+                  <video id="v-video-preview" class="video-preview" controls muted></video>
+                </div>
+                <input type="file" id="v-file-input" class="upload-hidden" accept="video/mp4,video/webm,video/quicktime,.mov,.mp4,.webm"
+                  onchange="previewVideoFile(this)">
+              </div>
+              <!-- 视频链接 -->
+              <div id="v-panel-url" style="display:none;">
+                <input class="form-input" id="v-url" placeholder="https://... 填入视频播放链接（B站/油管/外链均可）" style="margin-top:4px;">
+                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:6px;">
+                  支持直链 mp4 / B站分享链接 / YouTube 链接等，前台将以内嵌或跳转方式展示
+                </div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">封面图片（可选）</label>
+              <div class="file-upload-zone" id="v-thumb-zone"
+                ondragover="dragOver(event,'v-thumb-zone')"
+                ondragleave="dragLeave('v-thumb-zone')"
+                ondrop="dropFile(event,'v-img-input','v-thumb-preview')"
+                onclick="document.getElementById('v-img-input').click()">
+                <div class="file-upload-icon">🖼️</div>
+                <div class="file-upload-text">拖拽封面图到此处，或 <span>点击选择</span></div>
+                <img id="v-thumb-preview" class="file-preview" alt="预览">
+              </div>
+              <input type="file" id="v-img-input" class="upload-hidden" accept="image/*"
+                onchange="previewFile(this,'v-thumb-preview','v-thumb-zone')">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="addWork('video')">✓ 添加作品</button>
+            <button class="btn-reset" onclick="resetForm('video')">重置</button>
+          </div>
+        </div>
+        <div class="works-table-wrap">
+          <div class="works-table-header">
+            <h3>视频列表</h3>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterWorks('video','all',this)">全部</button>
+              <button class="filter-tab" onclick="filterWorks('video','visible',this)">已上架</button>
+              <button class="filter-tab" onclick="filterWorks('video','hidden',this)">已下架</button>
+            </div>
+          </div>
+          <div id="video-list"></div>
+        </div>
+      </div>
+
+      <!-- ===== 超级字符 ===== -->
+      <div class="tab-panel" id="tab-char">
+        <div class="upload-area">
+          <h3>✨ 上传超级字符作品</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">标题 *</label>
+              <input class="form-input" id="c-title" placeholder="作品名称">
+            </div>
+            <div class="form-group">
+              <label class="form-label">显示字符 *</label>
+              <input class="form-input" id="c-char" placeholder="输入1~4个字符" maxlength="4">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">描述</label>
+              <textarea class="form-textarea" id="c-desc" placeholder="描述字符艺术的创意与内涵..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">关联图片（可选）</label>
+              <div class="file-upload-zone" id="c-zone"
+                ondragover="dragOver(event,'c-zone')"
+                ondragleave="dragLeave('c-zone')"
+                ondrop="dropFile(event,'c-img-input','c-preview')"
+                onclick="document.getElementById('c-img-input').click()">
+                <div class="file-upload-icon">🔡</div>
+                <div class="file-upload-text">上传字符艺术图，或 <span>点击选择</span></div>
+                <img id="c-preview" class="file-preview" alt="预览">
+              </div>
+              <input type="file" id="c-img-input" class="upload-hidden" accept="image/*"
+                onchange="previewFile(this,'c-preview','c-zone')">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="addWork('char')">✓ 添加作品</button>
+            <button class="btn-reset" onclick="resetForm('char')">重置</button>
+          </div>
+        </div>
+        <div class="works-table-wrap">
+          <div class="works-table-header">
+            <h3>字符作品列表</h3>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterWorks('char','all',this)">全部</button>
+              <button class="filter-tab" onclick="filterWorks('char','visible',this)">已上架</button>
+              <button class="filter-tab" onclick="filterWorks('char','hidden',this)">已下架</button>
+            </div>
+          </div>
+          <div id="char-list"></div>
+        </div>
+      </div>
+
+      <!-- ===== 设置 ===== -->
+      <div class="tab-panel" id="tab-settings">
+        <div class="upload-area">
+          <h3>⚙️ 系统设置</h3>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">修改管理员密码</label>
+              <input type="password" class="form-input" id="new-pwd" placeholder="输入新密码（至少6位）">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">确认新密码</label>
+              <input type="password" class="form-input" id="confirm-pwd" placeholder="再次输入新密码">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="changePwd()">保存密码</button>
+          </div>
+        </div>
+        <div class="upload-area" style="margin-top:20px;">
+          <h3>🗄️ 数据管理</h3>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+            导出所有作品数据为 JSON 文件，可用于备份或迁移。
+          </p>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="exportData()">📥 导出数据</button>
+            <button class="btn-reset" onclick="importData()">📤 导入数据</button>
+            <input type="file" id="import-input" class="upload-hidden" accept=".json" onchange="handleImport(event)">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">确认删除</div>
+    <div class="confirm-text">此操作不可撤销，确定要删除这件作品吗？</div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">取消</button>
+      <button class="btn-danger" id="confirmOk">删除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONSTANTS =====
+const STORE_KEY='aigc_studio_data';
+const PWD_KEY='aigc_admin_pwd';
+const DEFAULT_PWD='admin123';
+
+// ===== DATA =====
+function getData(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    return raw?JSON.parse(raw):{paintings:[],posters:[],videos:[],chars:[]};
+  }catch(e){return{paintings:[],posters:[],videos:[],chars:[]};}
+}
+function saveData(data){
+  localStorage.setItem(STORE_KEY,JSON.stringify(data));
+}
+function getPwd(){return localStorage.getItem(PWD_KEY)||DEFAULT_PWD;}
+
+// ===== CURRENT FILTER STATE =====
+const filterState={painting:'all',poster:'all',video:'all',char:'all'};
+
+// ===== LOGIN =====
+function doLogin(){
+  const val=document.getElementById('pwdInput').value;
+  if(val===getPwd()){
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('adminLayout').classList.add('visible');
+    refreshAll();
+  }else{
+    document.getElementById('loginErr').textContent='密码错误，请重试';
+    document.getElementById('pwdInput').value='';
+    setTimeout(()=>{document.getElementById('loginErr').textContent='';},3000);
+  }
+}
+document.getElementById('pwdInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter') doLogin();
+});
+
+function doLogout(){
+  document.getElementById('adminLayout').classList.remove('visible');
+  document.getElementById('loginOverlay').style.display='flex';
+  document.getElementById('pwdInput').value='';
+}
+
+// ===== TAB SWITCH =====
+function switchTab(tab,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
+  const titles={overview:'总览',painting:'AI绘画管理',poster:'AI海报管理',video:'AI视频管理',char:'超级字符管理',settings:'设置'};
+  document.getElementById('topbarTitle').textContent=titles[tab]||tab;
+}
+
+// ===== FILE HANDLING =====
+let fileData={painting:null,poster:null,video:null,videoFile:null,char:null};
+let videoMode='file'; // 'file' | 'url'
+
+function switchVideoMode(mode){
+  videoMode=mode;
+  document.getElementById('v-panel-file').style.display=mode==='file'?'block':'none';
+  document.getElementById('v-panel-url').style.display=mode==='url'?'block':'none';
+  document.getElementById('v-mode-file').classList.toggle('active',mode==='file');
+  document.getElementById('v-mode-url').classList.toggle('active',mode==='url');
+}
+
+function previewVideoFile(input){
+  const file=input.files[0];
+  if(!file) return;
+  // show filename
+  const nameEl=document.getElementById('v-file-name');
+  nameEl.textContent='📎 '+file.name+' ('+Math.round(file.size/1024/1024*10)/10+' MB)';
+  nameEl.style.display='block';
+  // video preview with object URL (no base64 needed for preview)
+  const preview=document.getElementById('v-video-preview');
+  const objUrl=URL.createObjectURL(file);
+  preview.src=objUrl;
+  preview.style.display='block';
+  // read as base64 for storage
+  const reader=new FileReader();
+  reader.onload=e=>{fileData.videoFile=e.target.result;};
+  reader.readAsDataURL(file);
+}
+
+function dropVideoFile(e){
+  e.preventDefault();
+  const zone=e.currentTarget;
+  zone.classList.remove('dragover');
+  const file=e.dataTransfer.files[0];
+  if(!file||!file.type.startsWith('video/')) return;
+  const input=document.getElementById('v-file-input');
+  const dt=new DataTransfer();
+  dt.items.add(file);
+  input.files=dt.files;
+  previewVideoFile(input);
+}
+
+function previewFile(input,previewId,zoneId){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    const preview=document.getElementById(previewId);
+    preview.src=dataUrl;
+    preview.style.display='block';
+    if(input.id.startsWith('p-')) fileData.painting=dataUrl;
+    else if(input.id.startsWith('po-')) fileData.poster=dataUrl;
+    else if(input.id.startsWith('v-')) fileData.video=dataUrl;
+    else if(input.id.startsWith('c-')) fileData.char=dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function dragOver(e,zoneId){
+  e.preventDefault();
+  document.getElementById(zoneId).classList.add('dragover');
+}
+function dragLeave(zoneId){
+  document.getElementById(zoneId).classList.remove('dragover');
+}
+function dropFile(e,inputId,previewId){
+  e.preventDefault();
+  const zone=e.currentTarget;
+  zone.classList.remove('dragover');
+  const file=e.dataTransfer.files[0];
+  if(!file||!file.type.startsWith('image/')) return;
+  const input=document.getElementById(inputId);
+  const dt=new DataTransfer();
+  dt.items.add(file);
+  input.files=dt.files;
+  previewFile(input,previewId,zone.id);
+}
+
+// ===== ADD WORK =====
+function addWork(type){
+  const data=getData();
+  let item={id:Date.now().toString(),visible:true,likes:0,createdAt:new Date().toISOString()};
+
+  if(type==='painting'){
+    const title=document.getElementById('p-title').value.trim();
+    if(!title){showToast('请填写作品标题','error');return;}
+    item.title=title;
+    item.tool=document.getElementById('p-tool').value.trim();
+    item.desc=document.getElementById('p-desc').value.trim();
+    item.img=fileData.painting||'';
+    data.paintings.push(item);
+    fileData.painting=null;
+  }else if(type==='poster'){
+    const title=document.getElementById('po-title').value.trim();
+    if(!title){showToast('请填写海报标题','error');return;}
+    item.title=title;
+    item.tool=document.getElementById('po-tool').value.trim();
+    item.desc=document.getElementById('po-desc').value.trim();
+    item.img=fileData.poster||'';
+    data.posters.push(item);
+    fileData.poster=null;
+  }else if(type==='video'){
+    const title=document.getElementById('v-title').value.trim();
+    if(!title){showToast('请填写视频标题','error');return;}
+    item.title=title;
+    item.tool=document.getElementById('v-tool').value.trim();
+    item.desc=document.getElementById('v-desc').value.trim();
+    item.thumb=fileData.video||'';
+    // video source: local file takes priority over URL
+    if(videoMode==='file'&&fileData.videoFile){
+      item.videoData=fileData.videoFile;
+      item.url='';
+    }else{
+      item.videoData='';
+      item.url=document.getElementById('v-url').value.trim();
+    }
+    data.videos.push(item);
+    fileData.video=null;
+    fileData.videoFile=null;
+  }else if(type==='char'){
+    const title=document.getElementById('c-title').value.trim();
+    const char=document.getElementById('c-char').value.trim();
+    if(!title){showToast('请填写标题','error');return;}
+    if(!char){showToast('请填写显示字符','error');return;}
+    item.title=title;
+    item.char=char;
+    item.desc=document.getElementById('c-desc').value.trim();
+    item.img=fileData.char||'';
+    data.chars.push(item);
+    fileData.char=null;
+  }
+
+  saveData(data);
+  resetForm(type);
+  refreshAll();
+  showToast('作品添加成功 ✓');
+}
+
+// ===== RESET FORM =====
+function resetForm(type){
+  if(type==='painting'){
+    ['p-title','p-tool','p-desc'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('p-preview').style.display='none';
+    document.getElementById('p-img-input').value='';
+    fileData.painting=null;
+  }else if(type==='poster'){
+    ['po-title','po-tool','po-desc'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('po-preview').style.display='none';
+    document.getElementById('po-img-input').value='';
+    fileData.poster=null;
+  }else if(type==='video'){
+    ['v-title','v-tool','v-url','v-desc'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('v-thumb-preview').style.display='none';
+    document.getElementById('v-img-input').value='';
+    document.getElementById('v-video-preview').style.display='none';
+    document.getElementById('v-video-preview').src='';
+    document.getElementById('v-file-input').value='';
+    document.getElementById('v-file-name').style.display='none';
+    fileData.video=null;
+    fileData.videoFile=null;
+  }else if(type==='char'){
+    ['c-title','c-char','c-desc'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('c-preview').style.display='none';
+    document.getElementById('c-img-input').value='';
+    fileData.char=null;
+  }
+}
+
+// ===== TOGGLE VISIBLE =====
+function toggleVisible(type,id){
+  const data=getData();
+  let arr;
+  if(type==='painting') arr=data.paintings;
+  else if(type==='poster') arr=data.posters;
+  else if(type==='video') arr=data.videos;
+  else if(type==='char') arr=data.chars;
+  const item=arr.find(i=>i.id===id);
+  if(item){item.visible=!item.visible;saveData(data);refreshAll();}
+}
+
+// ===== DELETE =====
+let pendingDelete={type:null,id:null};
+function confirmDelete(type,id){
+  pendingDelete={type,id};
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){
+  document.getElementById('confirmOverlay').classList.remove('show');
+  pendingDelete={type:null,id:null};
+}
+document.getElementById('confirmOk').onclick=()=>{
+  const{type,id}=pendingDelete;
+  if(!type||!id){closeConfirm();return;}
+  const data=getData();
+  if(type==='painting') data.paintings=data.paintings.filter(i=>i.id!==id);
+  else if(type==='poster') data.posters=data.posters.filter(i=>i.id!==id);
+  else if(type==='video') data.videos=data.videos.filter(i=>i.id!==id);
+  else if(type==='char') data.chars=data.chars.filter(i=>i.id!==id);
+  saveData(data);
+  closeConfirm();
+  refreshAll();
+  showToast('已删除作品');
+};
+
+// ===== FILTER =====
+function filterWorks(type,filter,el){
+  filterState[type]=filter;
+  const container=el.closest('.works-table-header');
+  container.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderList(type,getData());
+}
+
+// ===== RENDER LISTS =====
+function renderList(type,data){
+  const filter=filterState[type];
+  let arr;
+  if(type==='painting') arr=data.paintings;
+  else if(type==='poster') arr=data.posters;
+  else if(type==='video') arr=data.videos;
+  else if(type==='char') arr=data.chars;
+
+  let items=arr;
+  if(filter==='visible') items=arr.filter(i=>i.visible);
+  else if(filter==='hidden') items=arr.filter(i=>!i.visible);
+
+  const container=document.getElementById(type+'-list');
+
+  if(!items.length){
+    container.innerHTML=`<div class="table-empty"><div class="empty-icon">📭</div><div>暂无作品</div></div>`;
+    return;
+  }
+
+  const typeLabels={painting:'AI绘画',poster:'AI海报',video:'AI视频',char:'超级字符'};
+  const typeBadges={painting:'badge-painting',poster:'badge-poster',video:'badge-video',char:'badge-char'};
+
+  const rows=items.map(item=>{
+    let thumbHtml;
+    if(type==='video'){
+      if(item.videoData){
+        thumbHtml=`<div class="table-thumb"><video src="${item.videoData}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" muted></video></div>`;
+      }else if(item.thumb){
+        thumbHtml=`<div class="table-thumb"><img src="${item.thumb}" alt=""></div>`;
+      }else{
+        thumbHtml=`<div class="table-thumb">🎬</div>`;
+      }
+    }else{
+      thumbHtml=item.img||item.thumb?
+        `<div class="table-thumb"><img src="${item.img||item.thumb}" alt=""></div>`:
+        `<div class="table-thumb">${type==='painting'?'🎨':type==='poster'?'🪧':'✨'}</div>`;
+    }
+    const charDisp=type==='char'?`<span style="font-size:1.2rem;margin-right:8px;">${item.char||''}</span>`:'';
+    const videoSourceBadge=type==='video'?(item.videoData?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(236,72,153,0.12);color:#f9a8d4;margin-left:4px;">本地</span>`:(item.url?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,0.1);color:#67e8f9;margin-left:4px;">链接</span>`:'')):'';
+    return `<tr>
+      <td>${thumbHtml}</td>
+      <td>${charDisp}<span style="font-weight:500">${item.title||'无标题'}</span>${videoSourceBadge}</td>
+      <td><span class="type-badge ${typeBadges[type]}">${typeLabels[type]}</span></td>
+      <td style="font-size:0.78rem;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.desc||'-'}</td>
+      <td>
+        <label class="toggle-switch" title="${item.visible?'点击下架':'点击上架'}">
+          <input type="checkbox" ${item.visible?'checked':''} onchange="toggleVisible('${type}','${item.id}')">
+          <span class="toggle-slider"></span>
+        </label>
+      </td>
+      <td style="font-size:0.78rem;color:${item.visible?'var(--success)':'var(--text-secondary)'}">
+        ${item.visible?'已上架':'已下架'}
+      </td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-icon" onclick="confirmDelete('${type}','${item.id}')" title="删除">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML=`
+    <table class="works-table">
+      <thead>
+        <tr>
+          <th>封面</th>
+          <th>标题</th>
+          <th>类型</th>
+          <th>描述</th>
+          <th>状态</th>
+          <th>展示</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ===== OVERVIEW STATS =====
+function updateOverview(data){
+  const p=data.paintings.filter(i=>i.visible).length;
+  const po=data.posters.filter(i=>i.visible).length;
+  const v=data.videos.filter(i=>i.visible).length;
+  const c=data.chars.filter(i=>i.visible).length;
+  document.getElementById('ov-total').textContent=p+po+v+c;
+  document.getElementById('ov-painting').textContent=data.paintings.length;
+  document.getElementById('ov-poster').textContent=data.posters.length;
+  document.getElementById('ov-video').textContent=data.videos.length;
+  document.getElementById('ov-char').textContent=data.chars.length;
+  document.getElementById('badge-painting').textContent=data.paintings.length;
+  document.getElementById('badge-poster').textContent=data.posters.length;
+  document.getElementById('badge-video').textContent=data.videos.length;
+  document.getElementById('badge-char').textContent=data.chars.length;
+}
+
+function refreshAll(){
+  const data=getData();
+  updateOverview(data);
+  renderList('painting',data);
+  renderList('poster',data);
+  renderList('video',data);
+  renderList('char',data);
+}
+
+// ===== SETTINGS =====
+function changePwd(){
+  const np=document.getElementById('new-pwd').value;
+  const cp=document.getElementById('confirm-pwd').value;
+  if(np.length<6){showToast('密码至少需要6位','error');return;}
+  if(np!==cp){showToast('两次密码不一致','error');return;}
+  localStorage.setItem(PWD_KEY,np);
+  document.getElementById('new-pwd').value='';
+  document.getElementById('confirm-pwd').value='';
+  showToast('密码已修改 ✓');
+}
+
+// ===== DATA EXPORT / IMPORT =====
+function exportData(){
+  const data=getData();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='aigc_studio_data.json';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast('数据导出成功');
+}
+function importData(){document.getElementById('import-input').click();}
+function handleImport(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!data.paintings||!data.posters||!data.videos||!data.chars){
+        showToast('数据格式不正确','error');return;
+      }
+      saveData(data);
+      refreshAll();
+      showToast('数据导入成功 ✓');
+    }catch(err){
+      showToast('解析失败，请检查文件格式','error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+  t.className='toast'+(type==='error'?' error':'');
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ===== INIT =====
+// Check if already logged in via session
+const isLoggedIn=sessionStorage.getItem('aigc_admin_logged')===getPwd();
+if(isLoggedIn){
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('adminLayout').classList.add('visible');
+  refreshAll();
+}
+
+function doLogin(){
+  const val=document.getElementById('pwdInput').value;
+  if(val===getPwd()){
+    sessionStorage.setItem('aigc_admin_logged',getPwd());
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('adminLayout').classList.add('visible');
+    refreshAll();
+  }else{
+    document.getElementById('loginErr').textContent='密码错误，请重试';
+    document.getElementById('pwdInput').value='';
+    setTimeout(()=>{document.getElementById('loginErr').textContent='';},3000);
+  }
+}
+function doLogout(){
+  sessionStorage.removeItem('aigc_admin_logged');
+  document.getElementById('adminLayout').classList.remove('visible');
+  document.getElementById('loginOverlay').style.display='flex';
+  document.getElementById('pwdInput').value='';
+}
+</script>
+</body>
+</html>

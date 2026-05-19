@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIGC 创作星球</title>
+<style>
+  :root {
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #f59e0b;
+    --accent4: #ec4899;
+    --bg-dark: #040812;
+    --bg-card: rgba(15,18,35,0.82);
+    --text-primary: #f0f4ff;
+    --text-secondary: #94a3b8;
+    --border-glow: rgba(124,58,237,0.4);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:#040812;
+    color:var(--text-primary);
+    font-family:'Segoe UI',system-ui,sans-serif;
+    overflow-x:hidden;
+    min-height:100vh;
+  }
+
+  /* ===== NEURAL CANVAS BACKGROUND ===== */
+  #neural-canvas{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    z-index:0;pointer-events:none;
+  }
+  .bg-overlay{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(124,58,237,0.18) 0%,transparent 70%),
+               radial-gradient(ellipse 60% 40% at 80% 80%,rgba(6,182,212,0.12) 0%,transparent 60%),
+               radial-gradient(ellipse 50% 50% at 20% 60%,rgba(245,158,11,0.08) 0%,transparent 60%);
+    z-index:0;pointer-events:none;
+  }
+
+  /* ===== SCROLLING GRID LINES ===== */
+  .grid-lines{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.06) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(124,58,237,0.06) 1px,transparent 1px);
+    background-size:60px 60px;
+    animation:gridScroll 20s linear infinite;
+    z-index:0;pointer-events:none;
+  }
+  @keyframes gridScroll{
+    0%{background-position:0 0;}
+    100%{background-position:60px 60px;}
+  }
+
+  /* ===== FLOATING PARTICLES ===== */
+  .particles-container{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    z-index:0;pointer-events:none;overflow:hidden;
+  }
+  .particle{
+    position:absolute;
+    border-radius:50%;
+    animation:floatUp linear infinite;
+    opacity:0;
+  }
+  @keyframes floatUp{
+    0%{transform:translateY(100vh) scale(0);opacity:0;}
+    10%{opacity:1;}
+    90%{opacity:0.6;}
+    100%{transform:translateY(-100px) scale(1);opacity:0;}
+  }
+
+  /* ===== LAYOUT ===== */
+  .page-wrapper{position:relative;z-index:1;}
+
+  /* ===== NAV ===== */
+  nav{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 5%;
+    height:64px;
+    background:rgba(4,8,18,0.85);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid rgba(124,58,237,0.2);
+  }
+  .nav-logo{
+    display:flex;align-items:center;gap:10px;
+    font-size:1.2rem;font-weight:700;letter-spacing:0.04em;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .nav-logo svg{width:32px;height:32px;flex-shrink:0;}
+  .nav-links{display:flex;gap:2rem;list-style:none;}
+  .nav-links a{
+    color:var(--text-secondary);font-size:0.9rem;text-decoration:none;
+    transition:color .2s;letter-spacing:0.03em;
+  }
+  .nav-links a:hover{color:var(--text-primary);}
+  .nav-admin-btn{
+    background:none;border:1px solid rgba(124,58,237,0.4);
+    color:rgba(124,58,237,0.8);
+    padding:6px 14px;border-radius:6px;cursor:pointer;
+    font-size:0.8rem;letter-spacing:0.06em;transition:all .2s;
+    text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  }
+  .nav-admin-btn:hover{
+    background:rgba(124,58,237,0.12);
+    border-color:var(--accent);color:var(--accent);
+  }
+
+  /* ===== HERO ===== */
+  .hero{
+    min-height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    text-align:center;padding:120px 5% 80px;
+    position:relative;
+  }
+  .hero-tag{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);
+    border-radius:100px;padding:5px 16px;
+    font-size:0.78rem;letter-spacing:0.1em;color:rgba(124,58,237,0.9);
+    margin-bottom:2rem;text-transform:uppercase;
+  }
+  .hero-tag::before{
+    content:'';width:6px;height:6px;background:#7c3aed;
+    border-radius:50%;animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0.6);}
+    50%{box-shadow:0 0 0 8px rgba(124,58,237,0);}
+  }
+  .hero h1{
+    font-size:clamp(2.5rem,7vw,5.5rem);font-weight:800;
+    line-height:1.1;letter-spacing:-0.02em;margin-bottom:1.2rem;
+  }
+  .hero h1 span.grad-text{
+    background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 40%,#f59e0b 80%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    display:inline-block;
+  }
+  .hero-subtitle{
+    font-size:clamp(1rem,2vw,1.3rem);
+    color:var(--text-secondary);max-width:600px;
+    line-height:1.7;margin-bottom:3rem;
+  }
+  .hero-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;}
+  .btn-primary{
+    padding:12px 28px;border-radius:8px;
+    background:linear-gradient(135deg,#7c3aed,#5b21b6);
+    color:#fff;border:none;cursor:pointer;
+    font-size:0.95rem;font-weight:600;letter-spacing:0.02em;
+    text-decoration:none;
+    transition:all .25s;display:inline-flex;align-items:center;gap:8px;
+    box-shadow:0 0 30px rgba(124,58,237,0.3);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(124,58,237,0.5);}
+  .btn-secondary{
+    padding:12px 28px;border-radius:8px;
+    border:1px solid rgba(6,182,212,0.4);
+    background:rgba(6,182,212,0.06);
+    color:#06b6d4;cursor:pointer;
+    font-size:0.95rem;font-weight:500;letter-spacing:0.02em;
+    text-decoration:none;
+    transition:all .25s;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-secondary:hover{background:rgba(6,182,212,0.12);border-color:#06b6d4;}
+
+  /* ===== STATS BAR ===== */
+  .stats-bar{
+    display:flex;flex-wrap:wrap;gap:2px;justify-content:center;
+    margin-top:4rem;padding:0 5%;
+  }
+  .stat-item{
+    padding:14px 32px;text-align:center;
+    border-right:1px solid rgba(255,255,255,0.06);
+  }
+  .stat-item:last-child{border-right:none;}
+  .stat-num{font-size:2rem;font-weight:800;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .stat-label{font-size:0.78rem;color:var(--text-secondary);margin-top:4px;letter-spacing:0.05em;}
+
+  /* ===== SECTIONS ===== */
+  section{padding:100px 5%;}
+  .section-tag{
+    display:inline-block;
+    background:rgba(124,58,237,0.08);
+    border:1px solid rgba(124,58,237,0.2);
+    border-radius:4px;padding:3px 12px;
+    font-size:0.75rem;letter-spacing:0.1em;
+    color:rgba(124,58,237,0.7);text-transform:uppercase;
+    margin-bottom:1rem;
+  }
+  .section-title{
+    font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;
+    margin-bottom:0.6rem;letter-spacing:-0.01em;
+  }
+  .section-sub{
+    color:var(--text-secondary);font-size:1rem;
+    max-width:500px;line-height:1.6;margin-bottom:3rem;
+  }
+
+  /* ===== GALLERY GRID ===== */
+  .gallery-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+    gap:20px;
+  }
+  .gallery-grid.masonry{
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    grid-auto-rows:auto;
+  }
+
+  /* ===== ARTWORK CARD ===== */
+  .art-card{
+    background:var(--bg-card);
+    border:1px solid rgba(255,255,255,0.07);
+    border-radius:16px;overflow:hidden;
+    transition:transform .3s,box-shadow .3s,border-color .3s;
+    cursor:pointer;position:relative;
+  }
+  .art-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 30px var(--border-glow);
+    border-color:rgba(124,58,237,0.3);
+  }
+  .art-card-thumb{
+    width:100%;aspect-ratio:4/3;
+    background:#0d1030;
+    overflow:hidden;position:relative;
+  }
+  .art-card-thumb img{
+    width:100%;height:100%;object-fit:cover;
+    transition:transform .4s;display:block;
+  }
+  .art-card:hover .art-card-thumb img{transform:scale(1.06);}
+  .art-card-thumb .placeholder-art{
+    width:100%;height:100%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:3rem;
+    background:linear-gradient(135deg,#0d1030,#1a0a3d);
+  }
+  .art-card-body{padding:14px 16px 16px;}
+  .art-card-title{
+    font-size:0.95rem;font-weight:600;
+    margin-bottom:6px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .art-card-desc{
+    font-size:0.8rem;color:var(--text-secondary);
+    line-height:1.5;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .art-card-footer{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-top:12px;
+  }
+  .art-badge{
+    font-size:0.7rem;padding:3px 10px;border-radius:100px;
+    letter-spacing:0.05em;
+  }
+  .badge-painting{background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.2);}
+  .badge-poster{background:rgba(245,158,11,0.12);color:#fcd34d;border:1px solid rgba(245,158,11,0.2);}
+  .badge-video{background:rgba(236,72,153,0.12);color:#f9a8d4;border:1px solid rgba(236,72,153,0.2);}
+  .badge-char{background:rgba(6,182,212,0.12);color:#67e8f9;border:1px solid rgba(6,182,212,0.2);}
+  .art-card-like{
+    display:flex;align-items:center;gap:4px;
+    font-size:0.78rem;color:var(--text-secondary);
+    cursor:pointer;transition:color .2s;
+  }
+  .art-card-like:hover{color:#f59e0b;}
+  .card-overlay{
+    position:absolute;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.5);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .3s;
+  }
+  .art-card:hover .card-overlay{opacity:1;}
+  .overlay-btn{
+    padding:8px 20px;border-radius:6px;
+    background:rgba(124,58,237,0.8);color:#fff;
+    border:none;font-size:0.85rem;cursor:pointer;
+    backdrop-filter:blur(8px);
+  }
+
+  /* ===== VIDEO SECTION ===== */
+  .video-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    gap:24px;
+  }
+  .video-card{
+    background:var(--bg-card);
+    border:1px solid rgba(255,255,255,0.07);
+    border-radius:16px;overflow:hidden;
+    transition:transform .3s,box-shadow .3s,border-color .3s;
+    cursor:pointer;
+  }
+  .video-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 16px 48px rgba(0,0,0,0.5),0 0 24px rgba(236,72,153,0.15);
+    border-color:rgba(236,72,153,0.2);
+  }
+  .video-thumb{
+    width:100%;aspect-ratio:16/9;
+    background:#0d1030;
+    position:relative;overflow:hidden;
+  }
+  .video-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .video-thumb .placeholder-art{
+    width:100%;height:100%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:2.5rem;
+    background:linear-gradient(135deg,#0d1030,#2d0a22);
+  }
+  .play-btn{
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:52px;height:52px;border-radius:50%;
+    background:rgba(236,72,153,0.8);
+    display:flex;align-items:center;justify-content:center;
+    transition:background .2s,transform .2s;
+    backdrop-filter:blur(8px);
+  }
+  .video-card:hover .play-btn{
+    background:rgba(236,72,153,1);
+    transform:translate(-50%,-50%) scale(1.1);
+  }
+  .play-btn svg{width:20px;height:20px;fill:#fff;margin-left:3px;}
+  .video-info{padding:14px 16px 16px;}
+  .video-title{font-size:0.95rem;font-weight:600;margin-bottom:4px;}
+  .video-meta{font-size:0.8rem;color:var(--text-secondary);}
+
+  /* ===== SUPER CHAR SECTION ===== */
+  .char-section{background:rgba(6,182,212,0.03);}
+  .char-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+    gap:20px;
+  }
+  .char-card{
+    background:var(--bg-card);
+    border:1px solid rgba(6,182,212,0.1);
+    border-radius:16px;padding:24px 16px;
+    text-align:center;
+    transition:transform .3s,box-shadow .3s,border-color .3s;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+  }
+  .char-card::before{
+    content:'';
+    position:absolute;inset:0;
+    background:radial-gradient(circle at 50% 0%,rgba(6,182,212,0.08),transparent 70%);
+    opacity:0;transition:opacity .3s;
+  }
+  .char-card:hover::before{opacity:1;}
+  .char-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 16px 48px rgba(0,0,0,0.4),0 0 24px rgba(6,182,212,0.15);
+    border-color:rgba(6,182,212,0.3);
+  }
+  .char-display{
+    font-size:4rem;line-height:1.2;
+    background:linear-gradient(135deg,#06b6d4,#7c3aed);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    margin-bottom:12px;font-weight:900;
+    letter-spacing:-0.02em;
+    font-family:'Courier New',monospace;
+  }
+  .char-title{font-size:0.9rem;font-weight:600;margin-bottom:4px;}
+  .char-desc{font-size:0.75rem;color:var(--text-secondary);line-height:1.5;}
+
+  /* ===== SECTION DIVIDER ===== */
+  .section-divider{
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(124,58,237,0.3),transparent);
+    margin:0 5%;
+  }
+
+  /* ===== SECTION HEADERS ===== */
+  .section-header{
+    display:flex;flex-direction:column;
+    margin-bottom:40px;
+  }
+  .section-header-row{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    flex-wrap:wrap;gap:16px;
+  }
+  .view-all{
+    font-size:0.85rem;color:var(--accent);
+    border:1px solid rgba(124,58,237,0.3);
+    padding:6px 16px;border-radius:6px;
+    background:rgba(124,58,237,0.06);
+    cursor:pointer;transition:all .2s;
+    text-decoration:none;white-space:nowrap;
+  }
+  .view-all:hover{background:rgba(124,58,237,0.12);border-color:var(--accent);}
+
+  /* ===== SECTION COLORS ===== */
+  #painting .section-tag,#painting .view-all{color:rgba(124,58,237,0.8);border-color:rgba(124,58,237,0.25);}
+  #poster .section-tag{color:rgba(245,158,11,0.8);border-color:rgba(245,158,11,0.2);}
+  #poster .section-title{background:linear-gradient(135deg,#fbbf24,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  #poster .view-all{color:#f59e0b;border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.06);}
+  #poster .view-all:hover{background:rgba(245,158,11,0.12);}
+  #video .section-tag{color:rgba(236,72,153,0.8);border-color:rgba(236,72,153,0.2);}
+  #video .section-title{background:linear-gradient(135deg,#ec4899,#f43f5e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  #video .view-all{color:#ec4899;border-color:rgba(236,72,153,0.3);background:rgba(236,72,153,0.06);}
+  #video .view-all:hover{background:rgba(236,72,153,0.12);}
+  #superchar .section-tag{color:rgba(6,182,212,0.8);border-color:rgba(6,182,212,0.2);}
+  #superchar .section-title{background:linear-gradient(135deg,#06b6d4,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  #superchar .view-all{color:#06b6d4;border-color:rgba(6,182,212,0.3);background:rgba(6,182,212,0.06);}
+  #superchar .view-all:hover{background:rgba(6,182,212,0.12);}
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state{
+    grid-column:1/-1;
+    padding:60px 20px;text-align:center;
+    color:var(--text-secondary);
+  }
+  .empty-state .empty-icon{font-size:3rem;margin-bottom:1rem;}
+  .empty-state p{font-size:0.9rem;line-height:1.6;}
+
+  /* ===== LIGHTBOX ===== */
+  .lightbox{
+    display:none;position:fixed;inset:0;z-index:200;
+    background:rgba(0,0,0,0.92);
+    align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .lightbox.active{display:flex;}
+  .lightbox-inner{
+    max-width:900px;width:100%;
+    background:var(--bg-card);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:20px;overflow:hidden;
+    position:relative;
+  }
+  .lightbox-close{
+    position:absolute;top:16px;right:16px;z-index:10;
+    width:36px;height:36px;border-radius:50%;
+    background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);
+    color:#fff;font-size:1.2rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .2s;
+  }
+  .lightbox-close:hover{background:rgba(124,58,237,0.5);}
+  .lightbox-content{
+    display:flex;flex-direction:column;
+  }
+  .lightbox-img{width:100%;max-height:560px;object-fit:contain;background:#080c20;}
+  .lightbox-info{padding:20px 24px;}
+  .lightbox-title{font-size:1.2rem;font-weight:700;margin-bottom:6px;}
+  .lightbox-desc{font-size:0.9rem;color:var(--text-secondary);line-height:1.6;}
+
+  /* ===== FOOTER ===== */
+  footer{
+    padding:40px 5%;
+    border-top:1px solid rgba(255,255,255,0.05);
+    display:flex;flex-wrap:wrap;gap:16px;
+    align-items:center;justify-content:space-between;
+  }
+  .footer-logo{
+    font-size:1rem;font-weight:700;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .footer-copy{font-size:0.8rem;color:var(--text-secondary);}
+
+  /* ===== LOADING ===== */
+  .page-loader{
+    position:fixed;inset:0;z-index:500;
+    background:#040812;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:20px;
+    transition:opacity .5s,visibility .5s;
+  }
+  .page-loader.hidden{opacity:0;visibility:hidden;}
+  .loader-logo{
+    font-size:2rem;font-weight:800;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    animation:logoGlow 2s ease-in-out infinite;
+  }
+  @keyframes logoGlow{
+    0%,100%{filter:brightness(1);}
+    50%{filter:brightness(1.4);}
+  }
+  .loader-bar{
+    width:200px;height:3px;
+    background:rgba(124,58,237,0.15);
+    border-radius:100px;overflow:hidden;
+  }
+  .loader-fill{
+    height:100%;
+    background:linear-gradient(90deg,#7c3aed,#06b6d4);
+    border-radius:100px;
+    animation:loadFill 1.8s ease-out forwards;
+  }
+  @keyframes loadFill{
+    0%{width:0%;}
+    100%{width:100%;}
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-track{background:#040812;}
+  ::-webkit-scrollbar-thumb{background:rgba(124,58,237,0.4);border-radius:3px;}
+
+  /* ===== RESPONSIVE ===== */
+  @media(max-width:768px){
+    nav{padding:0 4%;}
+    .nav-links{display:none;}
+    section{padding:70px 4%;}
+    .hero{padding:100px 4% 60px;}
+    .stat-item{padding:12px 20px;}
+    .char-grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="page-loader" id="pageLoader">
+  <div class="loader-logo">AIGC STUDIO</div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<!-- BACKGROUND -->
+<canvas id="neural-canvas"></canvas>
+<div class="bg-overlay"></div>
+<div class="grid-lines"></div>
+<div class="particles-container" id="particles"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <svg viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="18" stroke="url(#ng)" stroke-width="1.5"/>
+      <circle cx="20" cy="8" r="3" fill="#7c3aed"/>
+      <circle cx="32" cy="26" r="3" fill="#06b6d4"/>
+      <circle cx="8" cy="26" r="3" fill="#f59e0b"/>
+      <circle cx="20" cy="20" r="4" fill="url(#ng)"/>
+      <line x1="20" y1="8" x2="20" y2="16" stroke="#7c3aed" stroke-width="1"/>
+      <line x1="32" y1="26" x2="24" y2="22" stroke="#06b6d4" stroke-width="1"/>
+      <line x1="8" y1="26" x2="16" y2="22" stroke="#f59e0b" stroke-width="1"/>
+      <defs>
+        <linearGradient id="ng" x1="0" y1="0" x2="40" y2="40">
+          <stop offset="0%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#06b6d4"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    AIGC STUDIO
+  </div>
+  <ul class="nav-links">
+    <li><a href="#painting">AI绘画</a></li>
+    <li><a href="#poster">AI海报</a></li>
+    <li><a href="#video">AI视频</a></li>
+    <li><a href="#superchar">超级字符</a></li>
+  </ul>
+  <a href="admin.html" class="nav-admin-btn">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <path d="M6 1a2 2 0 0 1 2 2v.5h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h1V3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v.5h2V3a1 1 0 0 0-1-1zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+    </svg>
+    后台管理
+  </a>
+</nav>
+
+<!-- HERO -->
+<div class="page-wrapper">
+<section class="hero">
+  <div class="hero-tag">AI 创作展示平台</div>
+  <h1>用 AI 创造<br><span class="grad-text">无限艺术可能</span></h1>
+  <p class="hero-subtitle">
+    这里汇聚了 AI 绘画、AI 海报、AI 视频与超级字符艺术，<br>
+    探索人工智能与艺术交汇的无限边界
+  </p>
+  <div class="hero-cta">
+    <a href="#painting" class="btn-primary">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm6.5-4.5a.5.5 0 0 1 .5.5v3.793l2.354 2.353a.5.5 0 0 1-.708.708L6.146 8.207A.5.5 0 0 1 6 7.85V4a.5.5 0 0 1 .5-.5z"/></svg>
+      探索作品
+    </a>
+    <a href="#superchar" class="btn-secondary">
+      超级字符艺术 →
+    </a>
+  </div>
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">总作品数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statPainting">0</div>
+      <div class="stat-label">AI 绘画</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statPoster">0</div>
+      <div class="stat-label">AI 海报</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statVideo">0</div>
+      <div class="stat-label">AI 视频</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statChar">0</div>
+      <div class="stat-label">超级字符</div>
+    </div>
+  </div>
+</section>
+
+<!-- =========== AI 绘画 =========== -->
+<div class="section-divider"></div>
+<section id="painting">
+  <div class="section-header">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">AI Painting</div>
+        <div class="section-title">AI 绘画</div>
+        <div class="section-sub">神经网络渲染的视觉诗篇，每一帧都是算法与美学的对话</div>
+      </div>
+      <a href="#painting" class="view-all">查看全部 →</a>
+    </div>
+  </div>
+  <div class="gallery-grid" id="paintingGrid">
+    <div class="empty-state">
+      <div class="empty-icon">🎨</div>
+      <p>暂无作品，前往后台管理上传</p>
+    </div>
+  </div>
+</section>
+
+<!-- =========== AI 海报 =========== -->
+<div class="section-divider"></div>
+<section id="poster">
+  <div class="section-header">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">AI Poster</div>
+        <div class="section-title">AI 海报</div>
+        <div class="section-sub">视觉设计的新语言，AI 重构创意边界</div>
+      </div>
+      <a href="#poster" class="view-all">查看全部 →</a>
+    </div>
+  </div>
+  <div class="gallery-grid" id="posterGrid">
+    <div class="empty-state">
+      <div class="empty-icon">🪧</div>
+      <p>暂无作品，前往后台管理上传</p>
+    </div>
+  </div>
+</section>
+
+<!-- =========== AI 视频 =========== -->
+<div class="section-divider"></div>
+<section id="video">
+  <div class="section-header">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">AI Video</div>
+        <div class="section-title">AI 视频</div>
+        <div class="section-sub">时间轴上的 AI 叙事，动态影像的新纪元</div>
+      </div>
+      <a href="#video" class="view-all">查看全部 →</a>
+    </div>
+  </div>
+  <div class="video-grid" id="videoGrid">
+    <div class="empty-state">
+      <div class="empty-icon">🎬</div>
+      <p>暂无作品，前往后台管理上传</p>
+    </div>
+  </div>
+</section>
+
+<!-- =========== 超级字符 =========== -->
+<div class="section-divider"></div>
+<section id="superchar" class="char-section">
+  <div class="section-header">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Super Character</div>
+        <div class="section-title">超级字符</div>
+        <div class="section-sub">当文字与图像融为一体，字符成为艺术的载体</div>
+      </div>
+      <a href="#superchar" class="view-all">查看全部 →</a>
+    </div>
+  </div>
+  <div class="char-grid" id="charGrid">
+    <div class="empty-state">
+      <div class="empty-icon">✨</div>
+      <p>暂无作品，前往后台管理上传</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">AIGC STUDIO</div>
+  <div class="footer-copy">© 2026 AIGC Studio · Powered by AI Creativity</div>
+  <a href="admin.html" class="nav-admin-btn">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <path d="M6 1a2 2 0 0 1 2 2v.5h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h1V3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v.5h2V3a1 1 0 0 0-1-1zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+    </svg>
+    管理后台
+  </a>
+</footer>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-inner">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <div class="lightbox-content">
+      <img class="lightbox-img" id="lightboxImg" src="" alt="">
+      <div class="lightbox-info">
+        <div class="lightbox-title" id="lightboxTitle"></div>
+        <div class="lightbox-desc" id="lightboxDesc"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== NEURAL CANVAS =====
+(function(){
+  const canvas=document.getElementById('neural-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,nodes=[];
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+  resize();window.addEventListener('resize',()=>{resize();initNodes();});
+
+  function initNodes(){
+    const count=Math.floor(W*H/18000);
+    nodes=[];
+    for(let i=0;i<count;i++){
+      nodes.push({
+        x:Math.random()*W,y:Math.random()*H,
+        vx:(Math.random()-.5)*0.4,vy:(Math.random()-.5)*0.4,
+        r:Math.random()*2+1,
+        color:['#7c3aed','#06b6d4','#f59e0b','#ec4899'][Math.floor(Math.random()*4)]
+      });
+    }
+  }
+  initNodes();
+
+  const DIST=120;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<nodes.length;i++){
+      const n=nodes[i];
+      n.x+=n.vx;n.y+=n.vy;
+      if(n.x<0||n.x>W)n.vx*=-1;
+      if(n.y<0||n.y>H)n.vy*=-1;
+      // dot
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle=n.color+'88';
+      ctx.fill();
+      // lines
+      for(let j=i+1;j<nodes.length;j++){
+        const m=nodes[j];
+        const dx=m.x-n.x,dy=m.y-n.y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<DIST){
+          ctx.beginPath();
+          ctx.moveTo(n.x,n.y);ctx.lineTo(m.x,m.y);
+          ctx.strokeStyle=`rgba(124,58,237,${0.15*(1-d/DIST)})`;
+          ctx.lineWidth=0.5;ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ===== PARTICLES =====
+(function(){
+  const cont=document.getElementById('particles');
+  const colors=['#7c3aed','#06b6d4','#f59e0b','#ec4899','#8b5cf6'];
+  for(let i=0;i<30;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    const size=Math.random()*4+1;
+    p.style.cssText=`
+      left:${Math.random()*100}%;
+      width:${size}px;height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-duration:${Math.random()*15+10}s;
+      animation-delay:${Math.random()*15}s;
+    `;
+    cont.appendChild(p);
+  }
+})();
+
+// ===== LOADER =====
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('pageLoader').classList.add('hidden');
+  },1800);
+});
+
+// ===== DATA STORE (localStorage) =====
+const STORE_KEY='aigc_studio_data';
+
+function getData(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    return raw?JSON.parse(raw):{paintings:[],posters:[],videos:[],chars:[]};
+  }catch(e){return{paintings:[],posters:[],videos:[],chars:[]};}
+}
+
+// ===== RENDER FUNCTIONS =====
+function renderPaintings(data){
+  const grid=document.getElementById('paintingGrid');
+  const items=data.paintings.filter(i=>i.visible);
+  if(!items.length){
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🎨</div><p>暂无作品，前往后台管理上传</p></div>`;
+    return;
+  }
+  grid.innerHTML=items.map(item=>`
+    <div class="art-card" onclick="openLightbox('${item.id}','painting')">
+      <div class="art-card-thumb">
+        ${item.img?`<img src="${item.img}" alt="${item.title}" loading="lazy">`
+          :`<div class="placeholder-art">🎨</div>`}
+        <div class="card-overlay"><button class="overlay-btn">查看大图</button></div>
+      </div>
+      <div class="art-card-body">
+        <div class="art-card-title">${item.title||'无标题'}</div>
+        <div class="art-card-desc">${item.desc||''}</div>
+        <div class="art-card-footer">
+          <span class="art-badge badge-painting">AI绘画</span>
+          <span class="art-card-like">♡ ${item.likes||0}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPosters(data){
+  const grid=document.getElementById('posterGrid');
+  const items=data.posters.filter(i=>i.visible);
+  if(!items.length){
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🪧</div><p>暂无作品，前往后台管理上传</p></div>`;
+    return;
+  }
+  grid.innerHTML=items.map(item=>`
+    <div class="art-card" onclick="openLightbox('${item.id}','poster')">
+      <div class="art-card-thumb">
+        ${item.img?`<img src="${item.img}" alt="${item.title}" loading="lazy">`
+          :`<div class="placeholder-art">🪧</div>`}
+        <div class="card-overlay"><button class="overlay-btn">查看大图</button></div>
+      </div>
+      <div class="art-card-body">
+        <div class="art-card-title">${item.title||'无标题'}</div>
+        <div class="art-card-desc">${item.desc||''}</div>
+        <div class="art-card-footer">
+          <span class="art-badge badge-poster">AI海报</span>
+          <span class="art-card-like">♡ ${item.likes||0}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderVideos(data){
+  const grid=document.getElementById('videoGrid');
+  const items=data.videos.filter(i=>i.visible);
+  if(!items.length){
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🎬</div><p>暂无作品，前往后台管理上传</p></div>`;
+    return;
+  }
+  grid.innerHTML=items.map(item=>{
+    const hasLocalVideo=!!item.videoData;
+    const hasUrl=!!item.url;
+    if(hasLocalVideo){
+      // inline video player for local uploaded video
+      return `
+        <div class="video-card">
+          <div class="video-thumb" style="position:relative;">
+            <video
+              src="${item.videoData}"
+              ${item.thumb?`poster="${item.thumb}"`:''}
+              controls
+              preload="metadata"
+              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:0;"
+            ></video>
+          </div>
+          <div class="video-info">
+            <div class="video-title">${item.title||'无标题'}</div>
+            <div class="video-meta">${item.desc||''}</div>
+          </div>
+        </div>`;
+    }else{
+      // URL mode: show thumb + play button → open in new tab or lightbox
+      return `
+        <div class="video-card" onclick="openVideoModal('${item.id}')">
+          <div class="video-thumb">
+            ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy">`
+              :`<div class="placeholder-art">🎬</div>`}
+            <div class="play-btn">
+              <svg viewBox="0 0 20 20"><polygon points="5,3 19,10 5,17"/></svg>
+            </div>
+          </div>
+          <div class="video-info">
+            <div class="video-title">${item.title||'无标题'}</div>
+            <div class="video-meta">${item.desc||''}</div>
+          </div>
+        </div>`;
+    }
+  }).join('');
+}
+
+function renderChars(data){
+  const grid=document.getElementById('charGrid');
+  const items=data.chars.filter(i=>i.visible);
+  if(!items.length){
+    grid.innerHTML=`<div class="empty-state"><div class="empty-icon">✨</div><p>暂无作品，前往后台管理上传</p></div>`;
+    return;
+  }
+  grid.innerHTML=items.map(item=>`
+    <div class="char-card" onclick="openLightbox('${item.id}','char')">
+      <div class="char-display">${item.char||'字'}</div>
+      <div class="char-title">${item.title||'无标题'}</div>
+      <div class="char-desc">${item.desc||''}</div>
+    </div>
+  `).join('');
+}
+
+function updateStats(data){
+  const p=data.paintings.filter(i=>i.visible).length;
+  const po=data.posters.filter(i=>i.visible).length;
+  const v=data.videos.filter(i=>i.visible).length;
+  const c=data.chars.filter(i=>i.visible).length;
+  document.getElementById('statTotal').textContent=p+po+v+c;
+  document.getElementById('statPainting').textContent=p;
+  document.getElementById('statPoster').textContent=po;
+  document.getElementById('statVideo').textContent=v;
+  document.getElementById('statChar').textContent=c;
+}
+
+function renderAll(){
+  const data=getData();
+  renderPaintings(data);
+  renderPosters(data);
+  renderVideos(data);
+  renderChars(data);
+  updateStats(data);
+}
+
+// ===== LIGHTBOX =====
+function openLightbox(id,type){
+  const data=getData();
+  let item;
+  if(type==='painting') item=data.paintings.find(i=>i.id===id);
+  else if(type==='poster') item=data.posters.find(i=>i.id===id);
+  else if(type==='char') item=data.chars.find(i=>i.id===id);
+  if(!item) return;
+
+  document.getElementById('lightboxImg').src=item.img||'';
+  document.getElementById('lightboxImg').style.display=item.img?'block':'none';
+  document.getElementById('lightboxTitle').textContent=item.title||'无标题';
+  document.getElementById('lightboxDesc').textContent=item.desc||'';
+  document.getElementById('lightbox').classList.add('active');
+}
+
+function openVideoModal(id){
+  const data=getData();
+  const item=data.videos.find(i=>i.id===id);
+  if(!item) return;
+  // local video is handled inline, this is for URL type
+  if(item.url){
+    window.open(item.url,'_blank');
+  }
+}
+
+document.getElementById('lightboxClose').onclick=()=>{
+  document.getElementById('lightbox').classList.remove('active');
+};
+document.getElementById('lightbox').addEventListener('click',function(e){
+  if(e.target===this) this.classList.remove('active');
+});
+
+// ===== INIT =====
+renderAll();
+
+// listen for storage changes (from admin page)
+window.addEventListener('storage',()=>renderAll());
+
+// ===== COUNTER ANIMATION =====
+function animateCounter(el,target){
+  let current=0;
+  const step=Math.ceil(target/30);
+  const timer=setInterval(()=>{
+    current=Math.min(current+step,target);
+    el.textContent=current;
+    if(current>=target) clearInterval(timer);
+  },40);
+}
+</script>
+</body>
+</html>
