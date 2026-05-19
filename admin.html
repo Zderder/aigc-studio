@@ -607,6 +607,7 @@
           <div style="font-size:0.95rem;margin-bottom:6px;font-weight:600;color:var(--text-primary);">欢迎使用 AIGC Studio 后台</div>
           <div style="font-size:0.85rem;line-height:1.6;">从左侧菜单选择分类，上传并管理你的 AI 创作作品。<br>通过上架/下架开关控制作品是否在前台展示。</div>
           <div style="margin-top:16px;padding:12px 20px;border-radius:10px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.15);font-size:0.82rem;" id="storageInfo">📊 存储: 计算中...</div>
+          <div style="margin-top:10px;padding:12px 20px;border-radius:10px;font-size:0.82rem;" id="cloudInfoOverview">☁️ 云端同步: 未启用</div>
         </div>
       </div>
 
@@ -873,6 +874,67 @@
             <input type="file" id="import-input" class="upload-hidden" accept=".json" onchange="handleImport(event)">
           </div>
         </div>
+
+        <!-- ===== Cloud Sync ===== -->
+        <div class="upload-area" style="margin-top:20px;" id="cloudSection">
+          <h3>☁️ 云端同步</h3>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+            启用后将数据同步到 Firebase 云数据库，<b style="color:var(--text-primary);">任何设备打开链接都能看到作品</b>。<br>
+            基于 Firebase Realtime Database，免费额度充足。
+          </p>
+
+          <!-- Setup Guide -->
+          <details style="margin-bottom:16px;">
+            <summary style="font-size:0.82rem;color:var(--accent);cursor:pointer;user-select:none;outline:none;">
+              📖 如何获取 Firebase 数据库地址？（首次使用必看）
+            </summary>
+            <div style="margin-top:10px;padding:14px;border-radius:10px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.12);font-size:0.82rem;color:var(--text-secondary);line-height:1.8;">
+              <ol style="padding-left:20px;margin:0;">
+                <li>访问 <a href="https://console.firebase.google.com" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">Firebase 控制台</a>，用 Google 账号登录</li>
+                <li>点击「<b>创建项目</b>」→ 输入项目名 → 其余默认 → 点击「继续」直到完成</li>
+                <li>左侧菜单点击「<b>Build</b>」→「<b>Realtime Database</b>」→「<b>创建数据库</b>」</li>
+                <li>选择离你最近的区域，安全规则选「<b>测试模式</b>」→ 点击「启用」</li>
+                <li>数据库创建后，点击顶部 <b>⚙️ 规则</b>，改为：
+                  <code style="display:block;margin:6px 0;padding:8px 12px;border-radius:6px;background:rgba(0,0,0,0.3);font-size:0.78rem;color:#a78bfa;white-space:pre;">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</code>
+                </li>
+                <li>回到「<b>数据</b>」标签页，复制上方的<b>数据库 URL</b>（类似 <code style="color:#a78bfa;">https://xxx-default-rtdb.asia-southeast1.firebasedatabase.app</code>）</li>
+              </ol>
+            </div>
+          </details>
+
+          <!-- Cloud Config Form -->
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">Firebase 数据库地址</label>
+              <input class="form-input" id="cloudUrl" placeholder="https://your-project-default-rtdb.firebaseio.com" style="font-size:0.82rem;">
+            </div>
+          </div>
+
+          <!-- Cloud Actions -->
+          <div class="form-actions" style="margin-top:16px;flex-wrap:wrap;">
+            <button class="btn-submit" onclick="doTestCloud()" style="font-size:0.82rem;">🔗 测试连接</button>
+            <button class="btn-submit" id="btnCloudEnable" onclick="doEnableCloud()" style="display:none;font-size:0.82rem;background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 0 20px rgba(34,197,94,0.25);">☁️ 启用云端同步</button>
+            <button class="btn-reset" id="btnCloudDisable" onclick="doDisableCloud()" style="display:none;font-size:0.82rem;">✕ 关闭同步</button>
+            <button class="btn-submit" id="btnCloudUpload" onclick="doUploadToCloud()" style="display:none;font-size:0.82rem;">📤 手动同步到云端</button>
+            <button class="btn-submit" id="btnCloudConfig" onclick="doDownloadConfig()" style="display:none;font-size:0.82rem;">📋 下载 config.json</button>
+          </div>
+
+          <!-- Cloud Status -->
+          <div id="cloudStatus" style="margin-top:12px;font-size:0.82rem;min-height:24px;"></div>
+
+          <!-- Deploy Instructions (shown after enabling) -->
+          <div id="cloudDeployHint" style="display:none;margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);font-size:0.8rem;color:var(--text-secondary);line-height:1.7;">
+            <b style="color:#22c55e;">✨ 跨设备访问设置完成！</b><br>
+            点击上方「下载 config.json」，然后将该文件上传到网站的根目录（和 index.html 同级）。<br>
+            上传后，<b style="color:var(--text-primary);">所有设备打开网站链接即可看到你的作品</b>。
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -1435,6 +1497,136 @@ async function handleImport(e){
   reader.readAsText(file);
 }
 
+// ===== CLOUD SYNC =====
+function escHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function initCloudUI(){
+  var config=getCloudConfig();
+  var urlInput=document.getElementById('cloudUrl');
+  if(urlInput) urlInput.value=config.url||'';
+  updateCloudBtnVisibility(config);
+  updateCloudInfoOverview(config);
+}
+
+function updateCloudBtnVisibility(config){
+  var enableBtn=document.getElementById('btnCloudEnable');
+  var disableBtn=document.getElementById('btnCloudDisable');
+  var uploadBtn=document.getElementById('btnCloudUpload');
+  var configBtn=document.getElementById('btnCloudConfig');
+  var deployHint=document.getElementById('cloudDeployHint');
+
+  if(config.enabled&&config.url){
+    enableBtn.style.display='none';
+    disableBtn.style.display='inline-flex';
+    uploadBtn.style.display='inline-flex';
+    configBtn.style.display='inline-flex';
+    deployHint.style.display='block';
+  }else{
+    enableBtn.style.display=config.url?'inline-flex':'none';
+    disableBtn.style.display='none';
+    uploadBtn.style.display='none';
+    configBtn.style.display='none';
+    deployHint.style.display='none';
+  }
+}
+
+function updateCloudInfoOverview(config){
+  var el=document.getElementById('cloudInfoOverview');
+  if(!el)return;
+  if(config.enabled&&config.url){
+    el.innerHTML='<span style="color:#22c55e;">☁️ 云端同步: 已启用</span>';
+    el.style.background='rgba(34,197,94,0.06)';
+    el.style.border='1px solid rgba(34,197,94,0.15)';
+  }else{
+    el.innerHTML='<span style="color:var(--text-secondary);">☁️ 云端同步: 未启用（其他设备无法看到作品）</span>';
+    el.style.background='rgba(124,58,237,0.06)';
+    el.style.border='1px solid rgba(124,58,237,0.15)';
+  }
+}
+
+function setCloudStatus(msg,isError){
+  var el=document.getElementById('cloudStatus');
+  if(!el)return;
+  el.innerHTML=isError?'<span style="color:#ef4444;">✕ '+escHtml(msg)+'</span>':'<span style="color:#22c55e;">✓ '+escHtml(msg)+'</span>';
+}
+
+async function doTestCloud(){
+  var url=document.getElementById('cloudUrl').value.trim();
+  if(!url){setCloudStatus('请输入数据库地址',true);return;}
+  setCloudStatus('正在测试连接...',false);
+  var result=await testCloudConnection(url);
+  if(result.ok){
+    setCloudConfig(url,false); // save URL but don't enable yet
+    setCloudStatus(result.msg,false);
+    var config=getCloudConfig();
+    updateCloudBtnVisibility(config);
+  }else{
+    setCloudStatus(result.msg,true);
+    document.getElementById('btnCloudEnable').style.display='none';
+  }
+}
+
+async function doEnableCloud(){
+  var url=document.getElementById('cloudUrl').value.trim();
+  if(!url){showToast('请先输入 Firebase 数据库地址','error');return;}
+
+  setCloudStatus('正在启用同步并上传数据...',false);
+  setCloudConfig(url,true);
+
+  // Upload current local data to cloud
+  var data=await getData();
+  var ok=await cloudPushUrl(url.replace(/\/+$/,''),data);
+
+  if(ok){
+    setCloudStatus('云端同步已启用，数据已上传 ✓',false);
+    showToast('云端同步已启用 ✓ 其他设备可访问作品');
+  }else{
+    setCloudStatus('同步已启用，但数据上传失败，请检查网络或数据库规则','true');
+    showToast('启用成功，但首次上传失败，请稍后重试','error');
+  }
+  var config=getCloudConfig();
+  updateCloudBtnVisibility(config);
+  updateCloudInfoOverview(config);
+}
+
+async function doDisableCloud(){
+  setCloudConfig(undefined,false);
+  setCloudStatus('云端同步已关闭，数据仅保存在本地浏览器',false);
+  showToast('云端同步已关闭');
+  _effectiveCloudUrl=null; // reset cache
+  var config=getCloudConfig();
+  updateCloudBtnVisibility(config);
+  updateCloudInfoOverview(config);
+}
+
+async function doUploadToCloud(){
+  var config=getCloudConfig();
+  if(!config.url){showToast('请先配置数据库地址','error');return;}
+  setCloudStatus('正在同步数据到云端...',false);
+  var data=await getData();
+  var ok=await cloudPushUrl(config.url,data);
+  if(ok){
+    setCloudStatus('数据已同步到云端 ✓',false);
+    showToast('数据已同步到云端 ✓');
+  }else{
+    setCloudStatus('同步失败，请检查网络连接和数据库规则',true);
+    showToast('同步失败','error');
+  }
+}
+
+function doDownloadConfig(){
+  var config=getCloudConfig();
+  if(!config.url){showToast('请先配置数据库地址','error');return;}
+  var content=generateConfigJson(config.url);
+  var blob=new Blob([content],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='config.json';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast('config.json 已下载，请上传到网站根目录（和 index.html 同级）');
+}
+
 // ===== TOAST =====
 let toastTimer;
 function showToast(msg,type='success'){
@@ -1475,6 +1667,9 @@ function doLogout(){
   document.getElementById('loginOverlay').style.display='flex';
   document.getElementById('pwdInput').value='';
 }
+
+// Init cloud sync UI
+initCloudUI();
 </script>
 </body>
 </html>
