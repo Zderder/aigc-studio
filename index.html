@@ -455,6 +455,25 @@
   .lightbox-info{padding:20px 24px;}
   .lightbox-title{font-size:1.2rem;font-weight:700;margin-bottom:6px;}
   .lightbox-desc{font-size:0.9rem;color:var(--text-secondary);line-height:1.6;}
+  .lightbox-img-wrap{position:relative;}
+  .lightbox-nav{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:40px;height:40px;border-radius:50%;
+    background:rgba(0,0,0,0.5);
+    border:1px solid rgba(255,255,255,0.15);
+    color:#fff;font-size:1.4rem;cursor:pointer;
+    display:none;align-items:center;justify-content:center;
+    transition:background .2s;z-index:5;
+  }
+  .lightbox-nav:hover{background:rgba(124,58,237,0.6);}
+  .lightbox-prev{left:16px;}
+  .lightbox-next{right:16px;}
+  .lightbox-counter{
+    position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+    font-size:0.78rem;color:rgba(255,255,255,0.65);
+    background:rgba(0,0,0,0.45);padding:3px 14px;border-radius:100px;
+    display:none;z-index:5;backdrop-filter:blur(4px);
+  }
 
   /* ===== FOOTER ===== */
   footer{
@@ -714,7 +733,12 @@
   <div class="lightbox-inner">
     <button class="lightbox-close" id="lightboxClose">✕</button>
     <div class="lightbox-content">
-      <img class="lightbox-img" id="lightboxImg" src="" alt="">
+      <div class="lightbox-img-wrap">
+        <img class="lightbox-img" id="lightboxImg" src="" alt="">
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev">&#8249;</button>
+        <button class="lightbox-nav lightbox-next" id="lightboxNext">&#8250;</button>
+        <div class="lightbox-counter" id="lightboxCounter"></div>
+      </div>
       <div class="lightbox-info">
         <div class="lightbox-title" id="lightboxTitle"></div>
         <div class="lightbox-desc" id="lightboxDesc"></div>
@@ -821,11 +845,16 @@ function renderPaintings(data){
     grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🎨</div><p>暂无作品，前往后台管理上传</p></div>`;
     return;
   }
-  grid.innerHTML=items.map(item=>`
+  grid.innerHTML=items.map(item=>{
+    const imgs=item.imgs&&item.imgs.length?item.imgs:(item.img?[item.img]:[]);
+    const cover=imgs[0]||'';
+    const countBadge=imgs.length>1?`<span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:100px;z-index:2;backdrop-filter:blur(4px);">&#x1f5bc;&#xfe0f; ${imgs.length}</span>`:'';
+    return `
     <div class="art-card" onclick="openLightbox('${item.id}','painting')">
       <div class="art-card-thumb">
-        ${item.img?`<img src="${item.img}" alt="${item.title}" loading="lazy">`
+        ${cover?`<img src="${cover}" alt="${item.title}" loading="lazy">`
           :`<div class="placeholder-art">🎨</div>`}
+        ${countBadge}
         <div class="card-overlay"><button class="overlay-btn">查看大图</button></div>
       </div>
       <div class="art-card-body">
@@ -836,8 +865,8 @@ function renderPaintings(data){
           <span class="art-card-like">♡ ${item.likes||0}</span>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderPosters(data){
@@ -847,11 +876,16 @@ function renderPosters(data){
     grid.innerHTML=`<div class="empty-state"><div class="empty-icon">🪧</div><p>暂无作品，前往后台管理上传</p></div>`;
     return;
   }
-  grid.innerHTML=items.map(item=>`
+  grid.innerHTML=items.map(item=>{
+    const imgs=item.imgs&&item.imgs.length?item.imgs:(item.img?[item.img]:[]);
+    const cover=imgs[0]||'';
+    const countBadge=imgs.length>1?`<span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:100px;z-index:2;backdrop-filter:blur(4px);">&#x1f5bc;&#xfe0f; ${imgs.length}</span>`:'';
+    return `
     <div class="art-card" onclick="openLightbox('${item.id}','poster')">
       <div class="art-card-thumb">
-        ${item.img?`<img src="${item.img}" alt="${item.title}" loading="lazy">`
+        ${cover?`<img src="${cover}" alt="${item.title}" loading="lazy">`
           :`<div class="placeholder-art">🪧</div>`}
+        ${countBadge}
         <div class="card-overlay"><button class="overlay-btn">查看大图</button></div>
       </div>
       <div class="art-card-body">
@@ -862,8 +896,8 @@ function renderPosters(data){
           <span class="art-card-like">♡ ${item.likes||0}</span>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderVideos(data){
@@ -952,6 +986,8 @@ function renderAll(){
 }
 
 // ===== LIGHTBOX =====
+let lightboxImages=[],lightboxIndex=0;
+
 function openLightbox(id,type){
   const data=getData();
   let item;
@@ -960,12 +996,41 @@ function openLightbox(id,type){
   else if(type==='char') item=data.chars.find(i=>i.id===id);
   if(!item) return;
 
-  document.getElementById('lightboxImg').src=item.img||'';
-  document.getElementById('lightboxImg').style.display=item.img?'block':'none';
+  lightboxImages=item.imgs&&item.imgs.length?item.imgs:(item.img?[item.img]:[]);
+  lightboxIndex=0;
+  updateLightboxDisplay();
   document.getElementById('lightboxTitle').textContent=item.title||'无标题';
   document.getElementById('lightboxDesc').textContent=item.desc||'';
   document.getElementById('lightbox').classList.add('active');
 }
+
+function updateLightboxDisplay(){
+  const img=document.getElementById('lightboxImg');
+  const prev=document.getElementById('lightboxPrev');
+  const next=document.getElementById('lightboxNext');
+  const counter=document.getElementById('lightboxCounter');
+  if(lightboxImages.length>1){
+    prev.style.display='flex';next.style.display='flex';
+    counter.style.display='block';
+    counter.textContent=(lightboxIndex+1)+' / '+lightboxImages.length;
+  }else{
+    prev.style.display='none';next.style.display='none';
+    counter.style.display='none';
+  }
+  img.src=lightboxImages[lightboxIndex]||'';
+  img.style.display=lightboxImages.length?'block':'none';
+}
+
+document.getElementById('lightboxPrev').onclick=function(e){
+  e.stopPropagation();
+  lightboxIndex=(lightboxIndex-1+lightboxImages.length)%lightboxImages.length;
+  updateLightboxDisplay();
+};
+document.getElementById('lightboxNext').onclick=function(e){
+  e.stopPropagation();
+  lightboxIndex=(lightboxIndex+1)%lightboxImages.length;
+  updateLightboxDisplay();
+};
 
 function openVideoModal(id){
   const data=getData();
@@ -982,6 +1047,12 @@ document.getElementById('lightboxClose').onclick=()=>{
 };
 document.getElementById('lightbox').addEventListener('click',function(e){
   if(e.target===this) this.classList.remove('active');
+});
+document.addEventListener('keydown',function(e){
+  if(!document.getElementById('lightbox').classList.contains('active')) return;
+  if(e.key==='ArrowLeft') document.getElementById('lightboxPrev').click();
+  if(e.key==='ArrowRight') document.getElementById('lightboxNext').click();
+  if(e.key==='Escape') document.getElementById('lightboxClose').click();
 });
 
 // ===== INIT =====

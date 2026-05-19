@@ -285,6 +285,28 @@
     border-radius:8px;margin-top:10px;display:none;
     background:#000;
   }
+  .file-preview-grid{
+    display:flex;flex-wrap:wrap;gap:8px;
+    margin-top:12px;justify-content:center;
+  }
+  .file-preview-item{
+    position:relative;width:80px;height:80px;
+    border-radius:8px;overflow:hidden;
+    border:1px solid var(--border);
+    transition:border-color .2s;
+  }
+  .file-preview-item:hover{border-color:rgba(124,58,237,0.4);}
+  .file-preview-item img{width:100%;height:100%;object-fit:cover;}
+  .file-preview-item .remove-btn{
+    position:absolute;top:2px;right:2px;
+    width:20px;height:20px;border-radius:50%;
+    background:rgba(239,68,68,0.9);color:#fff;
+    border:none;cursor:pointer;font-size:0.65rem;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .2s;z-index:2;
+  }
+  .file-preview-item:hover .remove-btn{opacity:1;}
+  .upload-hint{font-size:0.75rem;color:var(--text-secondary);margin-top:4px;}
   .upload-mode-tabs{
     display:flex;gap:6px;margin-bottom:10px;
   }
@@ -605,19 +627,19 @@
               <textarea class="form-textarea" id="p-desc" placeholder="描述这幅作品的创作思路、Prompt 或故事..."></textarea>
             </div>
             <div class="form-group full">
-              <label class="form-label">上传图片</label>
+              <label class="form-label">上传图片（可多选）</label>
               <div class="file-upload-zone" id="p-zone"
                 ondragover="dragOver(event,'p-zone')"
                 ondragleave="dragLeave('p-zone')"
-                ondrop="dropFile(event,'p-img-input','p-preview')"
+                ondrop="dropMultipleFiles(event,'painting')"
                 onclick="document.getElementById('p-img-input').click()">
                 <div class="file-upload-icon">🖼️</div>
-                <div class="file-upload-text">拖拽图片到此处，或 <span>点击选择文件</span></div>
-                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">支持 JPG / PNG / WebP / GIF，建议宽度 ≥ 800px</div>
-                <img id="p-preview" class="file-preview" alt="预览">
+                <div class="file-upload-text">拖拽图片到此处，或 <span>点击选择文件</span>（支持多选）</div>
+                <div class="upload-hint">支持 JPG / PNG / WebP / GIF，可一次选择多张</div>
+                <div class="file-preview-grid" id="p-previews"></div>
               </div>
-              <input type="file" id="p-img-input" class="upload-hidden" accept="image/*"
-                onchange="previewFile(this,'p-preview','p-zone')">
+              <input type="file" id="p-img-input" class="upload-hidden" accept="image/*" multiple
+                onchange="previewMultipleFiles(this,'painting')">
             </div>
           </div>
           <div class="form-actions">
@@ -656,18 +678,19 @@
               <textarea class="form-textarea" id="po-desc" placeholder="描述这张海报的主题、风格或使用场景..."></textarea>
             </div>
             <div class="form-group full">
-              <label class="form-label">上传图片</label>
+              <label class="form-label">上传图片（可多选）</label>
               <div class="file-upload-zone" id="po-zone"
                 ondragover="dragOver(event,'po-zone')"
                 ondragleave="dragLeave('po-zone')"
-                ondrop="dropFile(event,'po-img-input','po-preview')"
+                ondrop="dropMultipleFiles(event,'poster')"
                 onclick="document.getElementById('po-img-input').click()">
                 <div class="file-upload-icon">📋</div>
-                <div class="file-upload-text">拖拽图片到此处，或 <span>点击选择文件</span></div>
-                <img id="po-preview" class="file-preview" alt="预览">
+                <div class="file-upload-text">拖拽图片到此处，或 <span>点击选择文件</span>（支持多选）</div>
+                <div class="upload-hint">支持 JPG / PNG / WebP / GIF，可一次选择多张</div>
+                <div class="file-preview-grid" id="po-previews"></div>
               </div>
-              <input type="file" id="po-img-input" class="upload-hidden" accept="image/*"
-                onchange="previewFile(this,'po-preview','po-zone')">
+              <input type="file" id="po-img-input" class="upload-hidden" accept="image/*" multiple
+                onchange="previewMultipleFiles(this,'poster')">
             </div>
           </div>
           <div class="form-actions">
@@ -786,18 +809,19 @@
               <textarea class="form-textarea" id="c-desc" placeholder="描述字符艺术的创意与内涵..."></textarea>
             </div>
             <div class="form-group full">
-              <label class="form-label">关联图片（可选）</label>
+              <label class="form-label">关联图片（可选，可多选）</label>
               <div class="file-upload-zone" id="c-zone"
                 ondragover="dragOver(event,'c-zone')"
                 ondragleave="dragLeave('c-zone')"
-                ondrop="dropFile(event,'c-img-input','c-preview')"
+                ondrop="dropMultipleFiles(event,'char')"
                 onclick="document.getElementById('c-img-input').click()">
                 <div class="file-upload-icon">🔡</div>
-                <div class="file-upload-text">上传字符艺术图，或 <span>点击选择</span></div>
-                <img id="c-preview" class="file-preview" alt="预览">
+                <div class="file-upload-text">上传字符艺术图，或 <span>点击选择</span>（支持多选）</div>
+                <div class="upload-hint">可上传多张字符艺术图</div>
+                <div class="file-preview-grid" id="c-previews"></div>
               </div>
-              <input type="file" id="c-img-input" class="upload-hidden" accept="image/*"
-                onchange="previewFile(this,'c-preview','c-zone')">
+              <input type="file" id="c-img-input" class="upload-hidden" accept="image/*" multiple
+                onchange="previewMultipleFiles(this,'char')">
             </div>
           </div>
           <div class="form-actions">
@@ -923,7 +947,7 @@ function switchTab(tab,el){
 }
 
 // ===== FILE HANDLING =====
-let fileData={painting:null,poster:null,video:null,videoFile:null,char:null};
+let fileData={painting:[],poster:[],video:null,videoFile:null,char:[]};
 let videoMode='file'; // 'file' | 'url'
 
 function switchVideoMode(mode){
@@ -974,12 +998,60 @@ function previewFile(input,previewId,zoneId){
     const preview=document.getElementById(previewId);
     preview.src=dataUrl;
     preview.style.display='block';
-    if(input.id.startsWith('p-')) fileData.painting=dataUrl;
-    else if(input.id.startsWith('po-')) fileData.poster=dataUrl;
-    else if(input.id.startsWith('v-')) fileData.video=dataUrl;
-    else if(input.id.startsWith('c-')) fileData.char=dataUrl;
+    if(input.id.startsWith('v-')) fileData.video=dataUrl;
   };
   reader.readAsDataURL(file);
+}
+
+// ===== MULTI-FILE UPLOAD =====
+function previewMultipleFiles(input,type){
+  const files=Array.from(input.files);
+  if(!files.length) return;
+  let loaded=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      fileData[type].push(e.target.result);
+      loaded++;
+      if(loaded===files.length) renderPreviewGrid(type);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreviewGrid(type){
+  const prefixMap={painting:'p',poster:'po',char:'c'};
+  const prefix=prefixMap[type];
+  const container=document.getElementById(prefix+'-previews');
+  if(!container) return;
+  container.innerHTML=fileData[type].map((src,i)=>`
+    <div class="file-preview-item">
+      <img src="${src}" alt="预览 ${i+1}">
+      <button class="remove-btn" onclick="event.stopPropagation();removePreview('${type}',${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removePreview(type,index){
+  fileData[type].splice(index,1);
+  renderPreviewGrid(type);
+}
+
+function dropMultipleFiles(e,type){
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+  if(!files.length) return;
+  let loaded=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      fileData[type].push(ev.target.result);
+      loaded++;
+      if(loaded===files.length) renderPreviewGrid(type);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function dragOver(e,zoneId){
@@ -1013,18 +1085,20 @@ function addWork(type){
     item.title=title;
     item.tool=document.getElementById('p-tool').value.trim();
     item.desc=document.getElementById('p-desc').value.trim();
-    item.img=fileData.painting||'';
+    item.imgs=[...fileData.painting];
+    item.img=item.imgs[0]||'';
     data.paintings.push(item);
-    fileData.painting=null;
+    fileData.painting=[];
   }else if(type==='poster'){
     const title=document.getElementById('po-title').value.trim();
     if(!title){showToast('请填写海报标题','error');return;}
     item.title=title;
     item.tool=document.getElementById('po-tool').value.trim();
     item.desc=document.getElementById('po-desc').value.trim();
-    item.img=fileData.poster||'';
+    item.imgs=[...fileData.poster];
+    item.img=item.imgs[0]||'';
     data.posters.push(item);
-    fileData.poster=null;
+    fileData.poster=[];
   }else if(type==='video'){
     const title=document.getElementById('v-title').value.trim();
     if(!title){showToast('请填写视频标题','error');return;}
@@ -1051,9 +1125,10 @@ function addWork(type){
     item.title=title;
     item.char=char;
     item.desc=document.getElementById('c-desc').value.trim();
-    item.img=fileData.char||'';
+    item.imgs=[...fileData.char];
+    item.img=item.imgs[0]||'';
     data.chars.push(item);
-    fileData.char=null;
+    fileData.char=[];
   }
 
   saveData(data);
@@ -1066,14 +1141,14 @@ function addWork(type){
 function resetForm(type){
   if(type==='painting'){
     ['p-title','p-tool','p-desc'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('p-preview').style.display='none';
+    document.getElementById('p-previews').innerHTML='';
     document.getElementById('p-img-input').value='';
-    fileData.painting=null;
+    fileData.painting=[];
   }else if(type==='poster'){
     ['po-title','po-tool','po-desc'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('po-preview').style.display='none';
+    document.getElementById('po-previews').innerHTML='';
     document.getElementById('po-img-input').value='';
-    fileData.poster=null;
+    fileData.poster=[];
   }else if(type==='video'){
     ['v-title','v-tool','v-url','v-desc'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('v-thumb-preview').style.display='none';
@@ -1086,9 +1161,9 @@ function resetForm(type){
     fileData.videoFile=null;
   }else if(type==='char'){
     ['c-title','c-char','c-desc'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('c-preview').style.display='none';
+    document.getElementById('c-previews').innerHTML='';
     document.getElementById('c-img-input').value='';
-    fileData.char=null;
+    fileData.char=[];
   }
 }
 
@@ -1177,9 +1252,10 @@ function renderList(type,data){
     }
     const charDisp=type==='char'?`<span style="font-size:1.2rem;margin-right:8px;">${item.char||''}</span>`:'';
     const videoSourceBadge=type==='video'?(item.videoData?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(236,72,153,0.12);color:#f9a8d4;margin-left:4px;">本地</span>`:(item.url?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,0.1);color:#67e8f9;margin-left:4px;">链接</span>`:'')):'';
+    const imgCountBadge=(type!=='video'&&item.imgs&&item.imgs.length>1)?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(124,58,237,0.12);color:#a78bfa;margin-left:4px;">${item.imgs.length}张</span>`:'';
     return `<tr>
       <td>${thumbHtml}</td>
-      <td>${charDisp}<span style="font-weight:500">${item.title||'无标题'}</span>${videoSourceBadge}</td>
+      <td>${charDisp}<span style="font-weight:500">${item.title||'无标题'}</span>${videoSourceBadge}${imgCountBadge}</td>
       <td><span class="type-badge ${typeBadges[type]}">${typeLabels[type]}</span></td>
       <td style="font-size:0.78rem;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.desc||'-'}</td>
       <td>
