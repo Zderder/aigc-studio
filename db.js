@@ -216,24 +216,40 @@ function generateConfigJson(cloudUrl) {
 
 // ===== PUBLIC API =====
 
-// getData: cloud first → local fallback
+// getData: local first → cloud update (timestamp-based merge)
+// Local data always takes priority if it's newer than cloud.
+// This prevents stale cloud data from undoing recent admin changes.
 async function getData() {
+  // 1. Load local data first (fast, has latest admin changes)
+  var localData = await getLocalData();
+  var localTs = localData._ts || 0;
+
+  // 2. Try cloud data and compare timestamps
   var cloudUrl = await getEffectiveCloudUrl();
   if (cloudUrl) {
     try {
       var cloudData = await cloudFetchUrl(cloudUrl);
       if (cloudData) {
-        // Cache cloud data to IndexedDB for offline fallback
-        saveToLocal(cloudData).catch(function() {});
-        return cloudData;
+        var cloudTs = cloudData._ts || 0;
+        if (cloudTs > localTs) {
+          // Cloud is newer (e.g., another device updated it) — use cloud data
+          saveToLocal(cloudData).catch(function() {});
+          return cloudData;
+        }
+        // Local is newer or equal — keep local data (preserves admin changes)
+        console.log('[AIGC DB] Using local data (ts:' + localTs + ') over cloud (ts:' + cloudTs + ')');
       }
     } catch(e) {}
   }
-  return getLocalData();
+
+  return localData;
 }
 
 // saveData: local first → cloud background sync
 async function saveData(data) {
+  // Stamp timestamp so getData() can determine which copy is newer
+  data._ts = Date.now();
+
   // Save locally (fast, reliable)
   var localPromise = saveToLocal(data);
   // Resolve cloud URL in parallel
