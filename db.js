@@ -10,6 +10,7 @@ var AIGC_DATA_KEY = 'aigc_studio_data';
 var AIGC_NOTIFY_KEY = 'aigc_studio_data_v';
 var CLOUD_URL_KEY = 'aigc_cloud_url';
 var CLOUD_ENABLED_KEY = 'aigc_cloud_enabled';
+var CLOUD_TIMEOUT = 8000; // 8 second timeout for cloud fetches
 
 var _db = null;
 var _effectiveCloudUrl = null; // cached effective cloud URL
@@ -147,7 +148,10 @@ async function getEffectiveCloudUrl() {
 // Fetch data from Firebase at a specific URL
 async function cloudFetchUrl(url) {
   try {
-    var res = await fetch(url + '/works.json');
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, CLOUD_TIMEOUT);
+    var res = await fetch(url + '/works.json', { signal: controller.signal });
+    clearTimeout(timer);
     if (res.status === 200) {
       var data = await res.json();
       if (data && typeof data === 'object' && 'paintings' in data) return data;
@@ -169,11 +173,15 @@ async function cloudFetchUrl(url) {
 // Push data to Firebase at a specific URL
 async function cloudPushUrl(url, data) {
   try {
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, CLOUD_TIMEOUT);
     var res = await fetch(url + '/works.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: controller.signal
     });
+    clearTimeout(timer);
     if (res.ok) {
       console.log('[AIGC Cloud] Push successful');
       return true;

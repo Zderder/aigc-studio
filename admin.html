@@ -1197,7 +1197,8 @@ function dropFile(e,inputId,previewId){
 
 // ===== ADD WORK =====
 async function addWork(type){
-  const data=await getData();
+  try{
+  const data=await getLocalData();
   let item={id:Date.now().toString()+Math.random().toString(36).substr(2,4),visible:true,likes:0,createdAt:new Date().toISOString()};
 
   if(type==='painting'){
@@ -1267,6 +1268,10 @@ async function addWork(type){
     else if(type==='poster') fileData.poster=item.imgs||[];
     else if(type==='char') fileData.char=item.imgs||[];
   }
+  }catch(e){
+    console.error('[AIGC] addWork error:',e);
+    showToast('操作出错：'+e.message,'error');
+  }
 }
 
 // ===== RESET FORM =====
@@ -1301,7 +1306,8 @@ function resetForm(type){
 
 // ===== TOGGLE VISIBLE =====
 async function toggleVisible(type,id){
-  const data=await getData();
+  try{
+  const data=await getLocalData();
   let arr;
   if(type==='painting') arr=data.paintings;
   else if(type==='poster') arr=data.posters;
@@ -1309,6 +1315,7 @@ async function toggleVisible(type,id){
   else if(type==='char') arr=data.chars;
   const item=arr.find(i=>i.id===id);
   if(item){item.visible=!item.visible;await saveData(data);await refreshAll(data);}
+  }catch(e){console.error('[AIGC] toggleVisible error:',e);showToast('操作出错','error');}
 }
 
 // ===== DELETE =====
@@ -1322,9 +1329,10 @@ function closeConfirm(){
   pendingDelete={type:null,id:null};
 }
 document.getElementById('confirmOk').onclick=async ()=>{
+  try{
   const{type,id}=pendingDelete;
   if(!type||!id){closeConfirm();return;}
-  const data=await getData();
+  const data=await getLocalData();
   if(type==='painting') data.paintings=data.paintings.filter(i=>i.id!==id);
   else if(type==='poster') data.posters=data.posters.filter(i=>i.id!==id);
   else if(type==='video') data.videos=data.videos.filter(i=>i.id!==id);
@@ -1333,6 +1341,7 @@ document.getElementById('confirmOk').onclick=async ()=>{
   closeConfirm();
   await refreshAll(data);
   showToast('已删除作品');
+  }catch(e){console.error('[AIGC] delete error:',e);closeConfirm();showToast('删除出错','error');}
 };
 
 // ===== FILTER =====
