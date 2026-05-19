@@ -262,6 +262,25 @@
   .btn-like:hover{background:rgba(124,58,237,0.2);border-color:rgba(124,58,237,0.4);}
   .btn-like.liked{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.3);color:#fcd34d;}
 
+  /* ===== VIDEO EMBED ===== */
+  .video-embed-main{
+    aspect-ratio:16/9 !important;
+    background:#000;
+  }
+  .video-embed-container{
+    position:relative;
+    width:100%;
+    height:100%;
+  }
+  .video-embed-container iframe{
+    position:absolute;
+    top:0;left:0;
+    width:100%;
+    height:100%;
+    border:none;
+    border-radius:0 0 20px 20px;
+  }
+
   /* ===== FULLSCREEN LIGHTBOX ===== */
   .fullscreen-overlay{
     display:none;position:fixed;inset:0;z-index:300;
@@ -448,6 +467,25 @@ const itemType=params.get('type');
   draw();
 })();
 
+// ===== VIDEO URL PARSER =====
+function getVideoEmbedInfo(url){
+  if(!url) return null;
+  // Direct video file link
+  if(/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)){
+    return {type:'direct',src:url};
+  }
+  // Bilibili: bilibili.com/video/BVxxx or b23.tv short links
+  let bvMatch=url.match(/bilibili\.com\/video\/(BV[a-zA-Z0-9]+)/);
+  if(bvMatch) return {type:'bilibili',bvid:bvMatch[1]};
+  let b23Match=url.match(/b23\.tv\/([a-zA-Z0-9]+)/);
+  if(b23Match) return {type:'bilibili_short',code:b23Match[1]};
+  // YouTube: youtube.com/watch?v=xxx or youtu.be/xxx
+  let ytMatch=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if(ytMatch) return {type:'youtube',vid:ytMatch[1]};
+  // Unknown URL - return as external
+  return {type:'external',src:url};
+}
+
 // ===== RENDER DETAIL =====
 let currentImages=[],currentImageIndex=0;
 
@@ -497,6 +535,13 @@ function renderDetail(){
   // Format date
   const dateStr=item.createdAt?new Date(item.createdAt).toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}):'未知';
 
+  // Check video embed info for URL-based videos
+  let videoEmbed=null;
+  if(itemType==='video'&&item.url&&!item.videoData){
+    videoEmbed=getVideoEmbedInfo(item.url);
+    console.log('[AIGC Detail] 视频链接解析:',videoEmbed);
+  }
+
   const container=document.getElementById('detailContent');
 
   let html=`<div class="breadcrumb">
@@ -511,56 +556,107 @@ function renderDetail(){
 
   // ===== LEFT: MEDIA =====
   html+=`<div class="detail-media">`;
-  html+=`<div class="media-main" id="mediaMain" onclick="openFullscreen()">`;
 
-  if(itemType==='video'&&item.videoData){
-    // Local video
-    html+=`<video
-      id="mainVideo"
-      src="${item.videoData}"
-      ${item.thumb?`poster="${item.thumb}"`:''}
-      controls
-      preload="metadata"
-      style="width:100%;height:100%;object-fit:contain;display:block;"
-    ></video>`;
-  }else if(itemType==='video'&&item.url){
-    // URL video - show thumb or placeholder
-    html+=item.thumb?`<img src="${item.thumb}" alt="${item.title}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d1030,#2d0a22);font-size:4rem;">&#9654;</div>`;
+  if(itemType==='video'){
+    // Determine how to render the video
+    if(item.videoData){
+      // Local uploaded video
+      html+=`<div class="media-main" id="mediaMain" onclick="openFullscreen()" style="cursor:default;">
+        <video
+          id="mainVideo"
+          src="${item.videoData}"
+          ${item.thumb?`poster="${item.thumb}"`:''}
+          controls
+          preload="metadata"
+          style="width:100%;height:100%;object-fit:contain;display:block;background:#000;"
+        ></video>
+      </div>`;
+    }else if(videoEmbed&&(videoEmbed.type==='direct')){
+      // Direct MP4/WebM link - play inline
+      html+=`<div class="media-main" id="mediaMain" style="cursor:default;">
+        <video
+          id="mainVideo"
+          src="${escHtml(videoEmbed.src)}"
+          ${item.thumb?`poster="${item.thumb}"`:''}
+          controls
+          preload="metadata"
+          style="width:100%;height:100%;object-fit:contain;display:block;background:#000;"
+        ></video>
+      </div>`;
+    }else if(videoEmbed&&(videoEmbed.type==='bilibili')){
+      // Bilibili embed
+      html+=`<div class="media-main video-embed-main" id="mediaMain" style="cursor:default;aspect-ratio:auto;padding-bottom:0;">
+        <div class="video-embed-container">
+          <iframe
+            src="//player.bilibili.com/player.html?bvid=${videoEmbed.bvid}&autoplay=0&high_quality=1"
+            scrolling="no"
+            border="0"
+            frameborder="no"
+            framespacing="0"
+            allowfullscreen="true"
+            sandbox="allow-top-navigation allow-same-origin allow-forms allow-scripts allow-popups"
+          ></iframe>
+        </div>
+      </div>`;
+    }else if(videoEmbed&&(videoEmbed.type==='youtube')){
+      // YouTube embed
+      html+=`<div class="media-main video-embed-main" id="mediaMain" style="cursor:default;aspect-ratio:auto;padding-bottom:0;">
+        <div class="video-embed-container">
+          <iframe
+            src="https://www.youtube.com/embed/${videoEmbed.vid}?rel=0"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>`;
+    }else{
+      // Unknown URL or external link - show thumb + play button
+      html+=`<div class="media-main" id="mediaMain" onclick="openExternalVideo('${escHtml(item.url)}')" style="cursor:pointer;">
+        ${item.thumb?`<img src="${item.thumb}" alt="${item.title}">`
+          :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d1030,#2d0a22);">
+            <div style="text-align:center;">
+              <div style="font-size:3rem;margin-bottom:8px;">&#9654;</div>
+              <div style="font-size:0.85rem;color:var(--text-secondary);">点击播放视频</div>
+            </div>
+          </div>`}
+      </div>`;
+    }
   }else{
     // Image type
+    html+=`<div class="media-main" id="mediaMain" onclick="openFullscreen()">`;
     const cover=currentImages[0]||'';
     if(cover){
       html+=`<img id="mainImage" src="${cover}" alt="${item.title}">`;
     }else{
       html+=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d1030,#1a0a3d);font-size:4rem;">${itemType==='char'?item.char||'&#10024;':itemType==='painting'?'&#127912;':itemType==='poster'?'&#128438;':'&#127916;'}</div>`;
     }
+    // Nav buttons for multi-image
+    if(currentImages.length>1){
+      html+=`<button class="media-nav prev show" id="mediaPrev" onclick="event.stopPropagation();switchImage(-1)">&#8249;</button>`;
+      html+=`<button class="media-nav next show" id="mediaNext" onclick="event.stopPropagation();switchImage(1)">&#8250;</button>`;
+      html+=`<div class="media-counter show" id="mediaCounter">1 / ${currentImages.length}</div>`;
+    }
+    html+=`</div>`; // end media-main
+
+    // Thumbnail strip
+    if(currentImages.length>1){
+      html+=`<div class="thumb-strip" id="thumbStrip">`;
+      currentImages.forEach((src,i)=>{
+        html+=`<div class="thumb-item${i===0?' active':''}" onclick="goToImage(${i})"><img src="${src}" alt="缩略图 ${i+1}"></div>`;
+      });
+      html+=`</div>`;
+    }
   }
 
-  // Nav buttons for multi-image
-  if(currentImages.length>1){
-    html+=`<button class="media-nav prev show" id="mediaPrev" onclick="event.stopPropagation();switchImage(-1)">&#8249;</button>`;
-    html+=`<button class="media-nav next show" id="mediaNext" onclick="event.stopPropagation();switchImage(1)">&#8250;</button>`;
-    html+=`<div class="media-counter show" id="mediaCounter">1 / ${currentImages.length}</div>`;
-  }
-
-  html+=`</div>`; // end media-main
-
-  // Thumbnail strip
-  if(currentImages.length>1){
-    html+=`<div class="thumb-strip" id="thumbStrip">`;
-    currentImages.forEach((src,i)=>{
-      html+=`<div class="thumb-item${i===0?' active':''}" onclick="goToImage(${i})"><img src="${src}" alt="缩略图 ${i+1}"></div>`;
-    });
-    html+=`</div>`;
-  }
-
-  // Video URL link area
-  if(itemType==='video'&&item.url&&!item.videoData){
+  // External link indicator for non-embeddable videos
+  if(itemType==='video'&&videoEmbed&&videoEmbed.type==='external'){
     html+=`<div style="padding:16px;text-align:center;">
-      <a href="${item.url}" target="_blank" class="back-btn" style="font-size:0.95rem;padding:12px 28px;">
+      <a href="${escHtml(item.url)}" target="_blank" rel="noopener" class="back-btn" style="font-size:0.95rem;padding:12px 28px;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM6.271 5.055a.5.5 0 0 0-.518.012L3.13 7.032a.5.5 0 0 0 0 .858l2.623 1.965a.5.5 0 0 0 .772-.416V5.471a.5.5 0 0 0-.254-.416z"/><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.067 5.055a.5.5 0 0 0-.518.012L8.1 6.906V11.34a.5.5 0 0 0 .772-.416l2.623-1.965a.5.5 0 0 0 0-.858l-2.623-1.965a.5.5 0 0 0-.254-.08z" opacity=".6"/></svg>
         &#x5728;&#x65B0;&#x7A97;&#x53E3;&#x64AD;&#x653E;&#x89C6;&#x9891;
       </a>
+      <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px;">&#x70B9;&#x51FB;&#x4E0A;&#x65B9;&#x5C01;&#x9762;&#x6216;&#x6B64;&#x6309;&#x94AE;&#x8DF3;&#x8F6C;&#x81F3;&#x89C6;&#x9891;&#x6E90;&#x7AD9;</div>
     </div>`;
   }
 
@@ -571,6 +667,16 @@ function renderDetail(){
 
   // Type badge
   html+=`<div class="info-type-badge ${badgeClass}">${typeLabel}</div>`;
+
+  // Video source indicator
+  if(itemType==='video'&&item.url&&!item.videoData){
+    const sourceLabels={direct:'直链视频',bilibili:'哔哩哔哩',youtube:'YouTube',bilibili_short:'哔哩哔哩',external:'外部链接'};
+    const sourceLabel=sourceLabels[videoEmbed.type]||'外部链接';
+    html+=`<div style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;padding:4px 10px;border-radius:6px;background:rgba(236,72,153,0.06);border:1px solid rgba(236,72,153,0.12);">
+      <span>&#x1F310;</span> ${sourceLabel}
+      ${videoEmbed.type==='external'?' (不支持内嵌)':''}
+    </div>`;
+  }
 
   // Char display
   if(itemType==='char'&&item.char){
@@ -681,6 +787,11 @@ function openFullscreen(){
   const overlay=document.getElementById('fullscreenOverlay');
   document.getElementById('fullscreenImg').src=currentImages[currentImageIndex];
   overlay.classList.add('show');
+}
+
+// ===== OPEN EXTERNAL VIDEO =====
+function openExternalVideo(url){
+  window.open(url,'_blank','noopener');
 }
 
 function closeFullscreen(){
