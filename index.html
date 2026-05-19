@@ -525,9 +525,9 @@
     AIGC STUDIO
   </div>
   <ul class="nav-links">
-    <li><a href="#painting">AI绘画</a></li>
-    <li><a href="#poster">AI海报</a></li>
     <li><a href="#video">AI视频</a></li>
+    <li><a href="#poster">AI海报</a></li>
+    <li><a href="#painting">IP形象</a></li>
     <li><a href="#superchar">超级字符</a></li>
   </ul>
   <a href="admin.html" class="nav-admin-btn">
@@ -544,11 +544,11 @@
   <div class="hero-tag">AI 创作展示平台</div>
   <h1>用 AI 创造<br><span class="grad-text">无限艺术可能</span></h1>
   <p class="hero-subtitle">
-    这里汇聚了 AI 绘画、AI 海报、AI 视频与超级字符艺术，<br>
+    这里汇聚了 AI 视频、AI 海报、IP 形象与超级字符艺术，<br>
     探索人工智能与艺术交汇的无限边界
   </p>
   <div class="hero-cta">
-    <a href="#painting" class="btn-primary">
+    <a href="#video" class="btn-primary">
       <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm6.5-4.5a.5.5 0 0 1 .5.5v3.793l2.354 2.353a.5.5 0 0 1-.708.708L6.146 8.207A.5.5 0 0 1 6 7.85V4a.5.5 0 0 1 .5-.5z"/></svg>
       探索作品
     </a>
@@ -563,7 +563,7 @@
     </div>
     <div class="stat-item">
       <div class="stat-num" id="statPainting">0</div>
-      <div class="stat-label">AI 绘画</div>
+      <div class="stat-label">IP 形象</div>
     </div>
     <div class="stat-item">
       <div class="stat-num" id="statPoster">0</div>
@@ -580,22 +580,22 @@
   </div>
 </section>
 
-<!-- =========== AI 绘画 =========== -->
+<!-- =========== AI 视频 =========== -->
 <div class="section-divider"></div>
-<section id="painting">
+<section id="video">
   <div class="section-header">
     <div class="section-header-row">
       <div>
-        <div class="section-tag">AI Painting</div>
-        <div class="section-title">AI 绘画</div>
-        <div class="section-sub">神经网络渲染的视觉诗篇，每一帧都是算法与美学的对话</div>
+        <div class="section-tag">AI Video</div>
+        <div class="section-title">AI 视频</div>
+        <div class="section-sub">时间轴上的 AI 叙事，动态影像的新纪元</div>
       </div>
-      <a href="#painting" class="view-all">查看全部 →</a>
+      <a href="#video" class="view-all">查看全部 →</a>
     </div>
   </div>
-  <div class="gallery-grid" id="paintingGrid">
+  <div class="video-grid" id="videoGrid">
     <div class="empty-state">
-      <div class="empty-icon">🎨</div>
+      <div class="empty-icon">🎬</div>
       <p>暂无作品，前往后台管理上传</p>
     </div>
   </div>
@@ -622,22 +622,22 @@
   </div>
 </section>
 
-<!-- =========== AI 视频 =========== -->
+<!-- =========== IP 形象 =========== -->
 <div class="section-divider"></div>
-<section id="video">
+<section id="painting">
   <div class="section-header">
     <div class="section-header-row">
       <div>
-        <div class="section-tag">AI Video</div>
-        <div class="section-title">AI 视频</div>
-        <div class="section-sub">时间轴上的 AI 叙事，动态影像的新纪元</div>
+        <div class="section-tag">IP Character</div>
+        <div class="section-title">IP 形象</div>
+        <div class="section-sub">神经网络渲染的视觉诗篇，每一帧都是算法与美学的对话</div>
       </div>
-      <a href="#video" class="view-all">查看全部 →</a>
+      <a href="#painting" class="view-all">查看全部 →</a>
     </div>
   </div>
-  <div class="video-grid" id="videoGrid">
+  <div class="gallery-grid" id="paintingGrid">
     <div class="empty-state">
-      <div class="empty-icon">🎬</div>
+      <div class="empty-icon">🎨</div>
       <p>暂无作品，前往后台管理上传</p>
     </div>
   </div>
@@ -788,7 +788,7 @@ function renderPaintings(data){
         <div class="art-card-title">${item.title||'无标题'}</div>
         <div class="art-card-desc">${item.desc||''}</div>
         <div class="art-card-footer">
-          <span class="art-badge badge-painting">AI绘画</span>
+          <span class="art-badge badge-painting">IP形象</span>
           <span class="art-card-like">♡ ${item.likes||0}</span>
         </div>
       </div>
