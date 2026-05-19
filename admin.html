@@ -1252,11 +1252,11 @@ async function addWork(type){
     fileData.char=[];
   }
 
-  saveData(data);
+  await saveData(data);
   resetForm(type);
-  await refreshAll();
-  // Double-check: verify the item was actually saved
-  const verifyData=await getData();
+  await refreshAll(data);
+  // Double-check: verify the item was actually saved (check local, not cloud)
+  const verifyData=await getLocalData();
   const verifyItem=verifyData[type==='painting'?'paintings':type==='poster'?'posters':type==='video'?'videos':'chars'].find(i=>i.id===item.id);
   if(verifyItem){
     showToast('作品添加成功 ✓');
@@ -1308,7 +1308,7 @@ async function toggleVisible(type,id){
   else if(type==='video') arr=data.videos;
   else if(type==='char') arr=data.chars;
   const item=arr.find(i=>i.id===id);
-  if(item){item.visible=!item.visible;saveData(data);refreshAll();}
+  if(item){item.visible=!item.visible;await saveData(data);await refreshAll(data);}
 }
 
 // ===== DELETE =====
@@ -1329,9 +1329,9 @@ document.getElementById('confirmOk').onclick=async ()=>{
   else if(type==='poster') data.posters=data.posters.filter(i=>i.id!==id);
   else if(type==='video') data.videos=data.videos.filter(i=>i.id!==id);
   else if(type==='char') data.chars=data.chars.filter(i=>i.id!==id);
-  saveData(data);
+  await saveData(data);
   closeConfirm();
-  await refreshAll();
+  await refreshAll(data);
   showToast('已删除作品');
 };
 
@@ -1443,8 +1443,8 @@ function updateOverview(data){
   document.getElementById('badge-char').textContent=data.chars.length;
 }
 
-async function refreshAll(){
-  const data=await getData();
+async function refreshAll(data){
+  if(!data) data=await getData();
   updateOverview(data);
   updateStorageInfo();
   renderList('painting',data);
