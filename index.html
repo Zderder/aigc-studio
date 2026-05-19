@@ -764,8 +764,18 @@ const STORE_KEY='aigc_studio_data';
 function getData(){
   try{
     const raw=localStorage.getItem(STORE_KEY);
-    return raw?JSON.parse(raw):{paintings:[],posters:[],videos:[],chars:[]};
-  }catch(e){return{paintings:[],posters:[],videos:[],chars:[]};}
+    if(!raw){
+      console.log('[AIGC] localStorage 为空，无作品数据');
+      return{paintings:[],posters:[],videos:[],chars:[]};
+    }
+    const data=JSON.parse(raw);
+    const total=data.paintings.length+data.posters.length+data.videos.length+data.chars.length;
+    console.log('[AIGC] 加载成功，共',total,'件作品 (绘画:'+data.paintings.length+' 海报:'+data.posters.length+' 视频:'+data.videos.length+' 字符:'+data.chars.length+')');
+    return data;
+  }catch(e){
+    console.error('[AIGC] 数据解析失败:',e);
+    return{paintings:[],posters:[],videos:[],chars:[]};
+  }
 }
 
 // ===== RENDER FUNCTIONS =====
@@ -842,17 +852,16 @@ function renderVideos(data){
     const hasLocalVideo=!!item.videoData;
     const hasUrl=!!item.url;
     if(hasLocalVideo){
-      // inline video player for local uploaded video
+      // inline video player for local uploaded video - show a poster, click to go to detail
+      const posterStyle=item.thumb?`background-image:url('${item.thumb}');background-size:cover;background-position:center;`:'';
       return `
-        <div class="video-card">
-          <div class="video-thumb" style="position:relative;">
-            <video
-              src="${item.videoData}"
-              ${item.thumb?`poster="${item.thumb}"`:''}
-              controls
-              preload="metadata"
-              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:0;"
-            ></video>
+        <div class="video-card" onclick="goDetail('${item.id}','video')" style="cursor:pointer;">
+          <div class="video-thumb">
+            ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy">`
+              :`<div class="placeholder-art">🎬</div>`}
+            <div class="play-btn">
+              <svg viewBox="0 0 20 20"><polygon points="5,3 19,10 5,17"/></svg>
+            </div>
           </div>
           <div class="video-info">
             <div class="video-title">${item.title||'无标题'}</div>
@@ -926,6 +935,38 @@ renderAll();
 
 // listen for storage changes (from admin page)
 window.addEventListener('storage',()=>renderAll());
+
+// ===== DEBUG CONSOLE INFO =====
+(function(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(!raw){
+      console.warn('[AIGC] ⚠️ localStorage 中没有作品数据！请在后台管理页面上传作品 (admin.html)');
+    }else{
+      const data=JSON.parse(raw);
+      const total=data.paintings.length+data.posters.length+data.videos.length+data.chars.length;
+      const visibleTotal=data.paintings.filter(i=>i.visible).length+data.posters.filter(i=>i.visible).length+data.videos.filter(i=>i.visible).length+data.chars.filter(i=>i.visible).length;
+      console.log('[AIGC] ✓ 已加载 '+total+' 件作品，其中 '+visibleTotal+' 件可见');
+      if(total>0&&visibleTotal===0){
+        console.warn('[AIGC] ⚠️ 所有作品均处于下架状态！请在后台管理页面开启上架');
+      }
+      // Check each item for valid image data
+      [data.paintings,data.posters,data.videos,data.chars].forEach((arr,typeIdx)=>{
+        const names=['paintings','posters','videos','chars'];
+        arr.forEach(item=>{
+          const hasImgs=item.imgs&&item.imgs.length>0;
+          const hasImg=item.img&&item.img.length>10;
+          const hasVideo=item.videoData&&item.videoData.length>10;
+          if(!hasImgs&&!hasImg&&!hasVideo&&item.visible){
+            console.warn('[AIGC] ⚠️ 作品 "'+item.title+'" ('+names[typeIdx]+') 已上架但缺少图片/视频数据');
+          }
+        });
+      });
+    }
+  }catch(e){
+    console.error('[AIGC] 数据检查出错:',e);
+  }
+})();
 
 // ===== COUNTER ANIMATION =====
 function animateCounter(el,target){

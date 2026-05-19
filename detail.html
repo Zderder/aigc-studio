@@ -385,8 +385,16 @@ const STORE_KEY='aigc_studio_data';
 function getData(){
   try{
     const raw=localStorage.getItem(STORE_KEY);
-    return raw?JSON.parse(raw):{paintings:[],posters:[],videos:[],chars:[]};
-  }catch(e){return{paintings:[],posters:[],videos:[],chars:[]};}
+    if(!raw){
+      console.log('[AIGC Detail] localStorage 为空');
+      return{paintings:[],posters:[],videos:[],chars:[]};
+    }
+    const data=JSON.parse(raw);
+    return data;
+  }catch(e){
+    console.error('[AIGC Detail] 数据解析失败:',e);
+    return{paintings:[],posters:[],videos:[],chars:[]};
+  }
 }
 
 // ===== PARSE URL PARAMS =====
@@ -445,9 +453,11 @@ let currentImages=[],currentImageIndex=0;
 
 function renderDetail(){
   if(!itemId||!itemType){
+    console.log('[AIGC Detail] 缺少参数, id='+itemId+' type='+itemType);
     renderNotFound('缺少作品参数');return;
   }
   const data=getData();
+  console.log('[AIGC Detail] 查找作品 id='+itemId+' type='+itemType);
   let item=null;
   let typeLabel='',badgeClass='',sectionId='';
 
@@ -465,7 +475,15 @@ function renderDetail(){
     typeLabel='超级字符';badgeClass='badge-char';sectionId='#superchar';
   }
 
-  if(!item){renderNotFound('未找到该作品');return;}
+  if(!item){
+    console.log('[AIGC Detail] 未找到作品, 已有数据:',
+      'paintings:',data.paintings.map(i=>i.id),
+      'posters:',data.posters.map(i=>i.id),
+      'videos:',data.videos.map(i=>i.id),
+      'chars:',data.chars.map(i=>i.id));
+    renderNotFound('未找到该作品');return;
+  }
+  console.log('[AIGC Detail] 找到作品:',item.title,'imgs:',item.imgs?item.imgs.length:0);
 
   // Build images array
   if(itemType==='video'){
