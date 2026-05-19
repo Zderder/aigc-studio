@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AIGC 创作星球</title>
+<!-- Preconnect to Firebase to reduce latency on first cloud fetch -->
+<link rel="preconnect" href="https://firebaseio.com">
+<link rel="preconnect" href="https://*.firebaseio.com">
+<link rel="dns-prefetch" href="https://firebaseio.com">
 <style>
   :root {
     --accent: #7c3aed;
@@ -779,7 +783,7 @@ function renderPaintings(data){
     return `
     <div class="art-card" onclick="goDetail('${item.id}','painting')">
       <div class="art-card-thumb">
-        ${cover?`<img src="${cover}" alt="${item.title}" loading="lazy">`
+        ${cover?`<img src="${cover}" alt="${item.title}" loading="lazy" decoding="async">`
           :`<div class="placeholder-art">🎨</div>`}
         ${countBadge}
         <div class="card-overlay"><button class="overlay-btn">查看大图</button></div>
@@ -810,7 +814,7 @@ function renderPosters(data){
     return `
     <div class="art-card" onclick="goDetail('${item.id}','poster')">
       <div class="art-card-thumb">
-        ${cover?`<img src="${cover}" alt="${item.title}" loading="lazy">`
+        ${cover?`<img src="${cover}" alt="${item.title}" loading="lazy" decoding="async">`
           :`<div class="placeholder-art">🪧</div>`}
         ${countBadge}
         <div class="card-overlay"><button class="overlay-btn">查看大图</button></div>
@@ -843,7 +847,7 @@ function renderVideos(data){
       return `
         <div class="video-card" onclick="goDetail('${item.id}','video')" style="cursor:pointer;">
           <div class="video-thumb">
-            ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy">`
+            ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy" decoding="async">`
               :`<div class="placeholder-art">🎬</div>`}
             <div class="play-btn">
               <svg viewBox="0 0 20 20"><polygon points="5,3 19,10 5,17"/></svg>
@@ -859,7 +863,7 @@ function renderVideos(data){
       return `
         <div class="video-card" onclick="goDetail('${item.id}','video')" style="cursor:pointer;">
           <div class="video-thumb">
-            ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy">`
+            ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy" decoding="async">`
               :`<div class="placeholder-art">🎬</div>`}
             <div class="play-btn">
               <svg viewBox="0 0 20 20"><polygon points="5,3 19,10 5,17"/></svg>
@@ -903,12 +907,62 @@ function updateStats(data){
 }
 
 async function renderAll(){
-  const data=await getData();
-  renderPaintings(data);
-  renderPosters(data);
-  renderVideos(data);
-  renderChars(data);
-  updateStats(data);
+  // Phase 1: render local data immediately (fast, show cached content)
+  try {
+    const localData = await getLocalData();
+    renderPaintings(localData);
+    renderPosters(localData);
+    renderVideos(localData);
+    renderChars(localData);
+    updateStats(localData);
+    console.log('[AIGC] Phase 1: rendered local data');
+  } catch(e) {
+    console.warn('[AIGC] Phase 1 render failed:', e);
+  }
+
+  // Phase 2: try cloud in background, re-render only if newer
+  try {
+    const cloudUrl = await getEffectiveCloudUrl();
+    if (!cloudUrl) return; // no cloud configured, done
+
+    showCloudLoading(true);
+    const cloudData = await cloudFetchUrl(cloudUrl);
+    if (cloudData) {
+      const localData2 = await getLocalData();
+      const localTs = localData2._ts || 0;
+      const cloudTs = cloudData._ts || 0;
+      if (cloudTs > localTs) {
+        await saveToLocal(cloudData);
+        renderPaintings(cloudData);
+        renderPosters(cloudData);
+        renderVideos(cloudData);
+        renderChars(cloudData);
+        updateStats(cloudData);
+        console.log('[AIGC] Phase 2: updated with newer cloud data (ts:' + cloudTs + ')');
+      }
+    }
+  } catch(e) {
+    console.warn('[AIGC] Phase 2 cloud fetch failed:', e);
+  } finally {
+    showCloudLoading(false);
+  }
+}
+
+// ===== CLOUD LOADING INDICATOR =====
+var _cloudLoadEl = null;
+function showCloudLoading(show) {
+  if (!_cloudLoadEl) {
+    _cloudLoadEl = document.createElement('div');
+    _cloudLoadEl.style.cssText = 'position:fixed;bottom:24px;right:24px;background:rgba(15,18,35,0.9);border:1px solid rgba(124,58,237,0.3);color:#94a3b8;padding:10px 18px;border-radius:12px;font-size:0.82rem;z-index:1000;backdrop-filter:blur(12px);transition:opacity 0.3s;pointer-events:none;';
+  }
+  if (show) {
+    _cloudLoadEl.innerHTML = '<span style="color:#7c3aed;">☁️</span> 正在同步云端数据...';
+    _cloudLoadEl.style.opacity = '1';
+    if (!_cloudLoadEl.parentNode) document.body.appendChild(_cloudLoadEl);
+  } else {
+    _cloudLoadEl.style.opacity = '0';
+    setTimeout(function() { if (_cloudLoadEl.parentNode) document.body.removeChild(_cloudLoadEl); }, 300);
+  }
 }
 
 // ===== NAVIGATION =====
@@ -923,21 +977,6 @@ renderAll();
 window.addEventListener('storage',function(e){
   if(e.key==='aigc_studio_data_v') renderAll();
 });
-
-// ===== DEBUG CONSOLE INFO =====
-(async function(){
-  try{
-    const data=await getData();
-    const total=data.paintings.length+data.posters.length+data.videos.length+data.chars.length;
-    const visibleTotal=data.paintings.filter(i=>i.visible).length+data.posters.filter(i=>i.visible).length+data.videos.filter(i=>i.visible).length+data.chars.filter(i=>i.visible).length;
-    console.log('[AIGC] Loaded '+total+' works, '+visibleTotal+' visible (IndexedDB)');
-    if(total>0&&visibleTotal===0){
-      console.warn('[AIGC] All works are hidden! Enable them in admin panel.');
-    }
-  }catch(e){
-    console.error('[AIGC] Data check error:',e);
-  }
-})();
 
 // ===== COUNTER ANIMATION =====
 function animateCounter(el,target){
