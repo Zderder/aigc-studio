@@ -961,8 +961,7 @@
 
 <script>
 // ===== CONSTANTS =====
-const PWD_KEY='aigc_admin_pwd';
-const DEFAULT_PWD='admin123';
+// PWD_KEY, DEFAULT_PWD are defined in db.js (AIGC_ADMIN_PWD_KEY, AIGC_ADMIN_PWD_DEFAULT)
 
 // ===== DATA (now using IndexedDB via db.js) =====
 async function updateStorageInfo(){
@@ -980,33 +979,10 @@ async function updateStorageInfo(){
   }
 }
 
-function getPwd(){return localStorage.getItem(PWD_KEY)||DEFAULT_PWD;}
+function getPwd(){return localStorage.getItem(AIGC_ADMIN_PWD_KEY)||AIGC_ADMIN_PWD_DEFAULT;}
 
 // ===== CURRENT FILTER STATE =====
 const filterState={painting:'all',poster:'all',video:'all',char:'all'};
-
-// ===== LOGIN =====
-function doLogin(){
-  const val=document.getElementById('pwdInput').value;
-  if(val===getPwd()){
-    document.getElementById('loginOverlay').style.display='none';
-    document.getElementById('adminLayout').classList.add('visible');
-    refreshAll();
-  }else{
-    document.getElementById('loginErr').textContent='密码错误，请重试';
-    document.getElementById('pwdInput').value='';
-    setTimeout(()=>{document.getElementById('loginErr').textContent='';},3000);
-  }
-}
-document.getElementById('pwdInput').addEventListener('keydown',e=>{
-  if(e.key==='Enter') doLogin();
-});
-
-function doLogout(){
-  document.getElementById('adminLayout').classList.remove('visible');
-  document.getElementById('loginOverlay').style.display='flex';
-  document.getElementById('pwdInput').value='';
-}
 
 // ===== TAB SWITCH =====
 function switchTab(tab,el){
@@ -1468,9 +1444,10 @@ function changePwd(){
   const cp=document.getElementById('confirm-pwd').value;
   if(np.length<6){showToast('密码至少需要6位','error');return;}
   if(np!==cp){showToast('两次密码不一致','error');return;}
-  localStorage.setItem(PWD_KEY,np);
+  localStorage.setItem(AIGC_ADMIN_PWD_KEY,np);
   document.getElementById('new-pwd').value='';
   document.getElementById('confirm-pwd').value='';
+  pushAdminSettingsToCloud().catch(function(){});
   showToast('密码已修改 ✓');
 }
 
@@ -1596,6 +1573,7 @@ async function doEnableCloud(){
   var config=getCloudConfig();
   updateCloudBtnVisibility(config);
   updateCloudInfoOverview(config);
+  pushAdminSettingsToCloud().catch(function(){});
 }
 
 async function doDisableCloud(){
@@ -1606,6 +1584,7 @@ async function doDisableCloud(){
   var config=getCloudConfig();
   updateCloudBtnVisibility(config);
   updateCloudInfoOverview(config);
+  pushAdminSettingsToCloud().catch(function(){});
 }
 
 async function doUploadToCloud(){
@@ -1655,13 +1634,30 @@ window.addEventListener('aigc-cloud-error',function(e){
   showToast('云端同步失败：'+(e.detail||'请检查网络'),'error');
 });
 
-// Check if already logged in via session
-const isLoggedIn=sessionStorage.getItem('aigc_admin_logged')===getPwd();
-if(isLoggedIn){
-  document.getElementById('loginOverlay').style.display='none';
-  document.getElementById('adminLayout').classList.add('visible');
-  refreshAll();
-}
+// Async init: restore settings from cloud first, then check login state
+(async function(){
+  // 1. Try to restore admin settings (password, cloud config) from cloud
+  var restored = await syncAdminSettingsFromCloud();
+  if (restored) {
+    console.log('[AIGC Admin] Settings restored from cloud');
+  }
+
+  // 2. Set up Enter key on password input
+  document.getElementById('pwdInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter') doLogin();
+  });
+
+  // 3. Check if already logged in via session
+  const isLoggedIn=sessionStorage.getItem('aigc_admin_logged')===getPwd();
+  if(isLoggedIn){
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('adminLayout').classList.add('visible');
+    await refreshAll();
+  }
+
+  // 4. Init cloud sync UI
+  initCloudUI();
+})();
 
 async function doLogin(){
   const val=document.getElementById('pwdInput').value;
@@ -1682,9 +1678,6 @@ function doLogout(){
   document.getElementById('loginOverlay').style.display='flex';
   document.getElementById('pwdInput').value='';
 }
-
-// Init cloud sync UI
-initCloudUI();
 </script>
 </body>
 </html>

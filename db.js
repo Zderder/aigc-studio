@@ -10,6 +10,8 @@ var AIGC_DATA_KEY = 'aigc_studio_data';
 var AIGC_NOTIFY_KEY = 'aigc_studio_data_v';
 var CLOUD_URL_KEY = 'aigc_cloud_url';
 var CLOUD_ENABLED_KEY = 'aigc_cloud_enabled';
+var AIGC_ADMIN_PWD_KEY = 'aigc_admin_pwd';
+var AIGC_ADMIN_PWD_DEFAULT = 'admin123';
 var CLOUD_TIMEOUT = 15000; // 15s timeout for cloud reads
 var CLOUD_PUSH_TIMEOUT = 60000; // 60s timeout for cloud writes (large payloads with images)
 
@@ -224,6 +226,98 @@ async function testCloudConnection(url) {
 // Generate config.json content for deployment
 function generateConfigJson(cloudUrl) {
   return JSON.stringify({ cloudUrl: cloudUrl.replace(/\/+$/, '') }, null, 2);
+}
+
+// ===== ADMIN SETTINGS CLOUD SYNC =====
+// Stores admin password + cloud sync config in Firebase /admin.json
+// so settings persist across browsers and devices
+
+async function cloudFetchAdmin(url) {
+  try {
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, CLOUD_TIMEOUT);
+    var res = await fetch(url + '/admin.json', { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.status === 200) {
+      var settings = await res.json();
+      if (settings && typeof settings === 'object') return settings;
+    }
+    return null;
+  } catch(e) {
+    console.warn('[AIGC Cloud] Fetch admin settings error:', e);
+    return null;
+  }
+}
+
+async function cloudPushAdmin(url, settings) {
+  try {
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, CLOUD_TIMEOUT);
+    var res = await fetch(url + '/admin.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      console.log('[AIGC Cloud] Admin settings pushed');
+      return true;
+    }
+    console.warn('[AIGC Cloud] Push admin settings failed, status:', res.status);
+    return false;
+  } catch(e) {
+    console.warn('[AIGC Cloud] Push admin settings error:', e);
+    return false;
+  }
+}
+
+// Load admin settings from cloud and restore to localStorage
+// Returns true if any settings were restored
+async function syncAdminSettingsFromCloud() {
+  var cloudUrl = await getEffectiveCloudUrl();
+  if (!cloudUrl) return false;
+
+  var settings = await cloudFetchAdmin(cloudUrl);
+  if (!settings) return false;
+
+  var restored = false;
+
+  // Restore password if valid
+  if (settings.pwd && settings.pwd.length >= 6) {
+    localStorage.setItem(AIGC_ADMIN_PWD_KEY, settings.pwd);
+    restored = true;
+  }
+
+  // Restore cloud sync settings
+  if (settings.cloudUrl) {
+    localStorage.setItem(CLOUD_URL_KEY, settings.cloudUrl.replace(/\/+$/, ''));
+    restored = true;
+  }
+  if (settings.cloudEnabled !== undefined) {
+    localStorage.setItem(CLOUD_ENABLED_KEY, settings.cloudEnabled ? 'true' : 'false');
+    restored = true;
+  }
+
+  if (restored) {
+    _effectiveCloudUrl = null; // reset cache after updating config
+    console.log('[AIGC Cloud] Admin settings restored from cloud');
+  }
+  return restored;
+}
+
+// Push current localStorage admin settings to cloud
+async function pushAdminSettingsToCloud() {
+  var cloudUrl = await getEffectiveCloudUrl();
+  if (!cloudUrl) return false;
+
+  var settings = {
+    pwd: localStorage.getItem(AIGC_ADMIN_PWD_KEY) || '',
+    cloudUrl: localStorage.getItem(CLOUD_URL_KEY) || '',
+    cloudEnabled: localStorage.getItem(CLOUD_ENABLED_KEY) === 'true'
+  };
+
+  return cloudPushAdmin(cloudUrl, settings);
 }
 
 // ===== PUBLIC API =====
