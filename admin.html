@@ -1633,6 +1633,18 @@ window.addEventListener('aigc-cloud-error',function(e){
   console.warn('[AIGC Admin] Cloud push failed:',e.detail);
   showToast('云端同步失败：'+(e.detail||'请检查网络'),'error');
 });
+// Listen for cloud push success — show subtle sync indicator
+window.addEventListener('aigc-cloud-synced',function(){
+  var el=document.getElementById('cloudInfoOverview');
+  if(!el)return;
+  var config=getCloudConfig();
+  if(config.enabled){
+    el.innerHTML='<span style="color:#22c55e;">☁️ 云端同步: 已启用 · 刚刚同步 ✓</span>';
+    el.style.background='rgba(34,197,94,0.06)';
+    el.style.border='1px solid rgba(34,197,94,0.15)';
+    setTimeout(function(){ updateCloudInfoOverview(config); },4000);
+  }
+});
 
 // Async init: restore settings from cloud first, then check login state
 (async function(){

@@ -384,6 +384,11 @@ async function saveData(data) {
       try {
         window.dispatchEvent(new CustomEvent('aigc-cloud-error', { detail: result.error }));
       } catch(e) {}
+    } else {
+      // Notify UI that cloud sync succeeded
+      try {
+        window.dispatchEvent(new CustomEvent('aigc-cloud-synced'));
+      } catch(e) {}
     }
   }
   return localResult;
