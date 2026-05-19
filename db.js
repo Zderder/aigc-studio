@@ -38,6 +38,16 @@ function openDB() {
   });
 }
 
+// Normalize data structure — ensure all four arrays exist
+function normalizeData(data) {
+  if (!data || typeof data !== 'object') data = {};
+  if (!Array.isArray(data.paintings)) data.paintings = [];
+  if (!Array.isArray(data.posters)) data.posters = [];
+  if (!Array.isArray(data.videos)) data.videos = [];
+  if (!Array.isArray(data.chars)) data.chars = [];
+  return data;
+}
+
 // Read from IndexedDB only (with localStorage migration fallback)
 async function getLocalData() {
   try {
@@ -48,18 +58,18 @@ async function getLocalData() {
       var req = store.get(AIGC_DATA_KEY);
       req.onsuccess = function() {
         if (req.result) {
-          resolve(req.result);
+          resolve(normalizeData(req.result));
         } else {
           // Try migrating from localStorage (legacy)
           try {
             var raw = localStorage.getItem(AIGC_DATA_KEY);
             if (raw) {
               var data = JSON.parse(raw);
-              saveToLocal(data).then(function() {
+              saveToLocal(normalizeData(data)).then(function() {
                 localStorage.removeItem(AIGC_DATA_KEY);
                 console.log('[AIGC DB] Data migrated from localStorage to IndexedDB');
               }).catch(function(e) { console.warn('[AIGC DB] Post-migration save failed:', e); });
-              resolve(data);
+              resolve(normalizeData(data));
             } else {
               resolve({paintings:[],posters:[],videos:[],chars:[]});
             }
@@ -339,8 +349,9 @@ async function getData() {
         var cloudTs = cloudData._ts || 0;
         if (cloudTs > localTs) {
           // Cloud is newer (e.g., another device updated it) — use cloud data
-          saveToLocal(cloudData).catch(function() {});
-          return cloudData;
+          var normalized = normalizeData(cloudData);
+          saveToLocal(normalized).catch(function() {});
+          return normalized;
         }
         // Local is newer or equal — keep local data (preserves admin changes)
         console.log('[AIGC DB] Using local data (ts:' + localTs + ') over cloud (ts:' + cloudTs + ')');
