@@ -1584,14 +1584,14 @@ async function doEnableCloud(){
 
   // Upload current local data to cloud
   var data=await getData();
-  var ok=await cloudPushUrl(url.replace(/\/+$/,''),data);
+  var result=await cloudPushUrl(url.replace(/\/+$/,''),data);
 
-  if(ok){
+  if(result.ok){
     setCloudStatus('云端同步已启用，数据已上传 ✓',false);
     showToast('云端同步已启用 ✓ 其他设备可访问作品');
   }else{
-    setCloudStatus('同步已启用，但数据上传失败，请检查网络或数据库规则','true');
-    showToast('启用成功，但首次上传失败，请稍后重试','error');
+    setCloudStatus('同步已启用，但数据上传失败：'+(result.error||'请检查网络或数据库规则'),true);
+    showToast('启用成功，但首次上传失败：'+(result.error||'请稍后重试'),'error');
   }
   var config=getCloudConfig();
   updateCloudBtnVisibility(config);
@@ -1613,13 +1613,13 @@ async function doUploadToCloud(){
   if(!config.url){showToast('请先配置数据库地址','error');return;}
   setCloudStatus('正在同步数据到云端...',false);
   var data=await getData();
-  var ok=await cloudPushUrl(config.url,data);
-  if(ok){
+  var result=await cloudPushUrl(config.url,data);
+  if(result.ok){
     setCloudStatus('数据已同步到云端 ✓',false);
     showToast('数据已同步到云端 ✓');
   }else{
-    setCloudStatus('同步失败，请检查网络连接和数据库规则',true);
-    showToast('同步失败','error');
+    setCloudStatus('同步失败：'+(result.error||'请检查网络连接和数据库规则'),true);
+    showToast('同步失败：'+(result.error||'未知错误'),'error');
   }
 }
 
@@ -1649,6 +1649,12 @@ function showToast(msg,type='success'){
 }
 
 // ===== INIT =====
+// Listen for cloud push failures from saveData()
+window.addEventListener('aigc-cloud-error',function(e){
+  console.warn('[AIGC Admin] Cloud push failed:',e.detail);
+  showToast('云端同步失败：'+(e.detail||'请检查网络'),'error');
+});
+
 // Check if already logged in via session
 const isLoggedIn=sessionStorage.getItem('aigc_admin_logged')===getPwd();
 if(isLoggedIn){

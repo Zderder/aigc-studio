@@ -10,7 +10,8 @@ var AIGC_DATA_KEY = 'aigc_studio_data';
 var AIGC_NOTIFY_KEY = 'aigc_studio_data_v';
 var CLOUD_URL_KEY = 'aigc_cloud_url';
 var CLOUD_ENABLED_KEY = 'aigc_cloud_enabled';
-var CLOUD_TIMEOUT = 8000; // 8 second timeout for cloud fetches
+var CLOUD_TIMEOUT = 15000; // 15s timeout for cloud reads
+var CLOUD_PUSH_TIMEOUT = 60000; // 60s timeout for cloud writes (large payloads with images)
 
 var _db = null;
 var _effectiveCloudUrl = null; // cached effective cloud URL
@@ -173,24 +174,35 @@ async function cloudFetchUrl(url) {
 // Push data to Firebase at a specific URL
 async function cloudPushUrl(url, data) {
   try {
+    var payload = JSON.stringify(data);
+    var payloadSize = new Blob([payload]).size;
+    console.log('[AIGC Cloud] Pushing data, payload size:', (payloadSize / 1024 / 1024).toFixed(2) + ' MB');
+
     var controller = new AbortController();
-    var timer = setTimeout(function() { controller.abort(); }, CLOUD_TIMEOUT);
+    var timer = setTimeout(function() { controller.abort(); }, CLOUD_PUSH_TIMEOUT);
     var res = await fetch(url + '/works.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: payload,
       signal: controller.signal
     });
     clearTimeout(timer);
     if (res.ok) {
       console.log('[AIGC Cloud] Push successful');
-      return true;
+      return { ok: true };
     }
-    console.warn('[AIGC Cloud] Push failed, status:', res.status);
-    return false;
+    // Read error body for diagnostics
+    var errMsg = 'HTTP ' + res.status;
+    try {
+      var errBody = await res.text();
+      if (errBody) errMsg += ': ' + errBody.substring(0, 200);
+    } catch(e2) {}
+    console.warn('[AIGC Cloud] Push failed:', errMsg);
+    return { ok: false, error: errMsg };
   } catch(e) {
-    console.warn('[AIGC Cloud] Push error:', e);
-    return false;
+    var reason = e.name === 'AbortError' ? '上传超时（数据量较大，请检查网络）' : e.message;
+    console.warn('[AIGC Cloud] Push error:', reason);
+    return { ok: false, error: reason };
   }
 }
 
@@ -258,9 +270,16 @@ async function saveData(data) {
   var localResult = await localPromise;
   var cloudUrl = await cloudUrlPromise;
 
-  // Background push to cloud (non-blocking)
+  // Background push to cloud
   if (cloudUrl) {
-    cloudPushUrl(cloudUrl, data).catch(function() {});
+    var result = await cloudPushUrl(cloudUrl, data);
+    if (!result.ok) {
+      console.warn('[AIGC] Cloud push failed:', result.error);
+      // Trigger custom event so UI can show warning
+      try {
+        window.dispatchEvent(new CustomEvent('aigc-cloud-error', { detail: result.error }));
+      } catch(e) {}
+    }
   }
   return localResult;
 }
