@@ -160,16 +160,18 @@
   }
   .hero h1{
     font-size:clamp(2.5rem,7vw,5.5rem);font-weight:800;
-    line-height:1.1;letter-spacing:-0.02em;margin-bottom:1.2rem;
+    line-height:1.15;letter-spacing:-0.02em;margin-bottom:1.2rem;
+    display:inline-block;
+    text-align:center;
   }
   .hero h1 span.grad-text{
     background:linear-gradient(135deg,#7c3aed 0%,#06b6d4 40%,#f59e0b 80%);
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-    display:inline-block;
+    display:block;
   }
   .hero-subtitle{
     font-size:clamp(1rem,2vw,1.3rem);
-    color:var(--text-secondary);max-width:600px;
+    color:var(--text-secondary);
     line-height:1.7;margin-bottom:3rem;
   }
   .hero-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;}
