@@ -82,7 +82,7 @@
   /* ===== NAV ===== */
   nav{
     position:fixed;top:0;left:0;right:0;z-index:100;
-    display:flex;align-items:center;justify-content:space-between;
+    display:flex;align-items:center;
     padding:0 5%;
     height:64px;
     background:rgba(4,8,18,0.85);
@@ -90,23 +90,26 @@
     border-bottom:1px solid rgba(124,58,237,0.2);
   }
   .nav-logo{
-    display:flex;align-items:center;gap:10px;
-    font-size:1.2rem;font-weight:700;letter-spacing:0.04em;
+    display:flex;align-items:center;gap:6px;
+    font-size:0.85rem;font-weight:700;letter-spacing:0.04em;
     background:linear-gradient(135deg,#7c3aed,#06b6d4);
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    flex-shrink:0;
   }
-  .nav-logo svg{width:32px;height:32px;flex-shrink:0;}
+  .nav-logo svg{width:24px;height:24px;flex-shrink:0;}
   .nav-brand-title{
+    position:absolute;
+    left:50%;transform:translateX(-50%);
     font-size:clamp(1.1rem,2.5vw,1.6rem);
     font-weight:800;
     letter-spacing:0.12em;
     background:linear-gradient(135deg,#c084fc 0%,#7c3aed 30%,#06b6d4 60%,#f59e0b 90%);
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
     background-clip:text;
-    position:relative;
     filter:drop-shadow(0 0 12px rgba(124,58,237,0.35));
     text-align:center;
     line-height:1.3;
+    white-space:nowrap;
   }
   .nav-brand-title .brand-sub{
     display:block;
@@ -126,6 +129,7 @@
     padding:6px 14px;border-radius:6px;cursor:pointer;
     font-size:0.8rem;letter-spacing:0.06em;transition:all .2s;
     text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    margin-left:auto;flex-shrink:0;
   }
   .nav-admin-btn:hover{
     background:rgba(124,58,237,0.12);
