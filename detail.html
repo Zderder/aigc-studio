@@ -331,6 +331,80 @@
     100%{width:100%;}
   }
 
+  /* ===== SKELETON SCREEN ===== */
+  @keyframes shimmer{
+    0%{background-position:-600px 0;}
+    100%{background-position:600px 0;}
+  }
+  .skeleton{
+    background:linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 75%);
+    background-size:600px 100%;
+    animation:shimmer 1.4s infinite linear;
+    border-radius:10px;
+  }
+  .skeleton-grid{
+    display:grid;
+    grid-template-columns:1fr 380px;
+    gap:32px;
+    align-items:start;
+    margin-top:28px;
+  }
+  .skeleton-media{
+    border-radius:20px;overflow:hidden;
+    border:1px solid rgba(255,255,255,0.07);
+  }
+  .skeleton-media-main{
+    width:100%;aspect-ratio:4/3;
+  }
+  .skeleton-thumb-row{
+    display:flex;gap:8px;padding:12px 16px;
+    background:rgba(8,10,22,0.5);
+    border-top:1px solid rgba(255,255,255,0.05);
+  }
+  .skeleton-thumb{width:64px;height:48px;flex-shrink:0;border-radius:8px;}
+  .skeleton-info{
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,0.07);
+    padding:28px 24px;display:flex;flex-direction:column;gap:16px;
+    background:rgba(15,18,35,0.85);
+  }
+  .skeleton-badge{width:80px;height:22px;}
+  .skeleton-title{width:85%;height:32px;}
+  .skeleton-title-sm{width:60%;height:24px;}
+  .skeleton-line{width:100%;height:14px;}
+  .skeleton-line-sm{width:70%;height:14px;}
+  .skeleton-line-xs{width:45%;height:14px;}
+
+  /* ===== IMAGE FADE-IN ===== */
+  .img-fadein{
+    opacity:0;
+    transition:opacity .35s ease;
+  }
+  .img-fadein.loaded{
+    opacity:1;
+  }
+
+  /* ===== CLOUD SYNC INDICATOR ===== */
+  .detail-cloud-indicator{
+    position:fixed;bottom:24px;right:24px;z-index:150;
+    background:rgba(15,18,35,0.92);
+    border:1px solid rgba(124,58,237,0.3);
+    border-radius:12px;padding:10px 16px;
+    font-size:0.82rem;color:var(--text-secondary);
+    display:none;align-items:center;gap:8px;
+    backdrop-filter:blur(12px);
+    box-shadow:0 4px 24px rgba(0,0,0,0.4);
+    transition:opacity .3s;
+  }
+  .detail-cloud-indicator.show{display:flex;}
+  .detail-cloud-indicator .spin{
+    width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(124,58,237,0.3);
+    border-top-color:#7c3aed;
+    animation:spin .8s linear infinite;flex-shrink:0;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
   /* ===== SCROLLBAR ===== */
   ::-webkit-scrollbar{width:6px;}
   ::-webkit-scrollbar-track{background:#040812;}
@@ -340,6 +414,7 @@
   @media(max-width:900px){
     .detail-grid{grid-template-columns:1fr;gap:20px;}
     .detail-info{position:static;}
+    .skeleton-grid{grid-template-columns:1fr;}
   }
   @media(max-width:640px){
     .detail-wrapper{padding:76px 4% 40px;}
@@ -399,12 +474,18 @@
   <img id="fullscreenImg" src="" alt="">
 </div>
 
+<!-- CLOUD SYNC INDICATOR -->
+<div class="detail-cloud-indicator" id="detailCloudIndicator">
+  <div class="spin"></div>
+  <span>☁️ 正在同步云端数据...</span>
+</div>
+
 <!-- SHARED DB LAYER (IndexedDB) -->
 <script src="db.js"></script>
 
 <script>
 // ===== CONSTANTS =====
-// getData() and saveData() are provided by db.js
+// getData(), getLocalData() and saveData() are provided by db.js
 
 // ===== PARSE URL PARAMS =====
 const params=new URLSearchParams(window.location.search);
@@ -476,16 +557,52 @@ function getVideoEmbedInfo(url){
   return {type:'external',src:url};
 }
 
+// ===== SKELETON SCREEN =====
+function showSkeleton(){
+  const container=document.getElementById('detailContent');
+  container.innerHTML=`
+    <div style="margin-bottom:28px;display:flex;gap:8px;align-items:center;">
+      <div class="skeleton" style="width:40px;height:14px;border-radius:4px;"></div>
+      <div class="skeleton" style="width:8px;height:14px;border-radius:2px;opacity:.4;"></div>
+      <div class="skeleton" style="width:60px;height:14px;border-radius:4px;"></div>
+      <div class="skeleton" style="width:8px;height:14px;border-radius:2px;opacity:.4;"></div>
+      <div class="skeleton" style="width:120px;height:14px;border-radius:4px;"></div>
+    </div>
+    <div class="skeleton-grid">
+      <div class="skeleton-media">
+        <div class="skeleton skeleton-media-main"></div>
+        <div class="skeleton-thumb-row">
+          <div class="skeleton skeleton-thumb"></div>
+          <div class="skeleton skeleton-thumb"></div>
+          <div class="skeleton skeleton-thumb"></div>
+        </div>
+      </div>
+      <div class="skeleton-info">
+        <div class="skeleton skeleton-badge"></div>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-title-sm"></div>
+        <div style="height:1px;background:rgba(124,58,237,0.1);margin:4px 0;"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line-sm"></div>
+        <div class="skeleton skeleton-line-xs"></div>
+      </div>
+    </div>`;
+}
+
+// ===== CLOUD LOADING INDICATOR =====
+function showDetailCloudLoading(show){
+  const el=document.getElementById('detailCloudIndicator');
+  if(!el) return;
+  if(show){el.classList.add('show');}
+  else{el.classList.remove('show');}
+}
+
 // ===== RENDER DETAIL =====
 let currentImages=[],currentImageIndex=0;
 
-async function renderDetail(){
-  if(!itemId||!itemType){
-    console.log('[AIGC Detail] 缺少参数, id='+itemId+' type='+itemType);
-    renderNotFound('缺少作品参数');return;
-  }
-  const data=await getData();
-  console.log('[AIGC Detail] 查找作品 id='+itemId+' type='+itemType);
+// Build and inject detail HTML from a data object
+function buildDetailHtml(data){
   let item=null;
   let typeLabel='',badgeClass='',sectionId='';
 
@@ -503,15 +620,7 @@ async function renderDetail(){
     typeLabel='超级字符';badgeClass='badge-char';sectionId='#superchar';
   }
 
-  if(!item){
-    console.log('[AIGC Detail] 未找到作品, 已有数据:',
-      'paintings:',data.paintings.map(i=>i.id),
-      'posters:',data.posters.map(i=>i.id),
-      'videos:',data.videos.map(i=>i.id),
-      'chars:',data.chars.map(i=>i.id));
-    renderNotFound('未找到该作品');return;
-  }
-  console.log('[AIGC Detail] 找到作品:',item.title,'imgs:',item.imgs?item.imgs.length:0);
+  if(!item) return null;
 
   // Build images array
   if(itemType==='video'){
@@ -529,10 +638,7 @@ async function renderDetail(){
   let videoEmbed=null;
   if(itemType==='video'&&item.url&&!item.videoData){
     videoEmbed=getVideoEmbedInfo(item.url);
-    console.log('[AIGC Detail] 视频链接解析:',videoEmbed);
   }
-
-  const container=document.getElementById('detailContent');
 
   let html=`<div class="breadcrumb">
     <a href="index.html">首页</a>
@@ -548,48 +654,31 @@ async function renderDetail(){
   html+=`<div class="detail-media">`;
 
   if(itemType==='video'){
-    // Determine how to render the video
     if(item.videoData){
-      // Local uploaded video
       html+=`<div class="media-main" id="mediaMain" onclick="openFullscreen()" style="cursor:default;">
-        <video
-          id="mainVideo"
-          src="${item.videoData}"
-          ${item.thumb?`poster="${item.thumb}"`:''}
-          controls
-          preload="metadata"
-          style="width:100%;height:100%;object-fit:contain;display:block;background:#000;"
-        ></video>
+        <video id="mainVideo" src="${item.videoData}" ${item.thumb?`poster="${item.thumb}"`:''}
+          controls preload="metadata"
+          style="width:100%;height:100%;object-fit:contain;display:block;background:#000;">
+        </video>
       </div>`;
     }else if(videoEmbed&&(videoEmbed.type==='direct')){
-      // Direct MP4/WebM link - play inline
       html+=`<div class="media-main" id="mediaMain" style="cursor:default;">
-        <video
-          id="mainVideo"
-          src="${escHtml(videoEmbed.src)}"
-          ${item.thumb?`poster="${item.thumb}"`:''}
-          controls
-          preload="metadata"
-          style="width:100%;height:100%;object-fit:contain;display:block;background:#000;"
-        ></video>
+        <video id="mainVideo" src="${escHtml(videoEmbed.src)}" ${item.thumb?`poster="${item.thumb}"`:''}
+          controls preload="metadata"
+          style="width:100%;height:100%;object-fit:contain;display:block;background:#000;">
+        </video>
       </div>`;
     }else if(videoEmbed&&(videoEmbed.type==='bilibili')){
-      // Bilibili embed
       html+=`<div class="media-main video-embed-main" id="mediaMain" style="cursor:default;aspect-ratio:auto;padding-bottom:0;">
         <div class="video-embed-container">
           <iframe
             src="//player.bilibili.com/player.html?bvid=${videoEmbed.bvid}&autoplay=0&high_quality=1"
-            scrolling="no"
-            border="0"
-            frameborder="no"
-            framespacing="0"
-            allowfullscreen="true"
+            scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"
             sandbox="allow-top-navigation allow-same-origin allow-forms allow-scripts allow-popups"
           ></iframe>
         </div>
       </div>`;
     }else if(videoEmbed&&(videoEmbed.type==='youtube')){
-      // YouTube embed
       html+=`<div class="media-main video-embed-main" id="mediaMain" style="cursor:default;aspect-ratio:auto;padding-bottom:0;">
         <div class="video-embed-container">
           <iframe
@@ -601,9 +690,8 @@ async function renderDetail(){
         </div>
       </div>`;
     }else{
-      // Unknown URL or external link - show thumb + play button
       html+=`<div class="media-main" id="mediaMain" onclick="openExternalVideo('${escHtml(item.url)}')" style="cursor:pointer;">
-        ${item.thumb?`<img src="${item.thumb}" alt="${item.title}">`
+        ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" decoding="async">`
           :`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d1030,#2d0a22);">
             <div style="text-align:center;">
               <div style="font-size:3rem;margin-bottom:8px;">&#9654;</div>
@@ -613,15 +701,14 @@ async function renderDetail(){
       </div>`;
     }
   }else{
-    // Image type
+    // Image type — main image with fade-in
     html+=`<div class="media-main" id="mediaMain" onclick="openFullscreen()">`;
     const cover=currentImages[0]||'';
     if(cover){
-      html+=`<img id="mainImage" src="${cover}" alt="${item.title}">`;
+      html+=`<img id="mainImage" class="img-fadein" src="${cover}" alt="${item.title}" decoding="async" onload="this.classList.add('loaded')">`;
     }else{
       html+=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d1030,#1a0a3d);font-size:4rem;">${itemType==='char'?item.char||'&#10024;':itemType==='painting'?'&#127912;':itemType==='poster'?'&#128438;':'&#127916;'}</div>`;
     }
-    // Nav buttons for multi-image
     if(currentImages.length>1){
       html+=`<button class="media-nav prev show" id="mediaPrev" onclick="event.stopPropagation();switchImage(-1)">&#8249;</button>`;
       html+=`<button class="media-nav next show" id="mediaNext" onclick="event.stopPropagation();switchImage(1)">&#8250;</button>`;
@@ -629,17 +716,17 @@ async function renderDetail(){
     }
     html+=`</div>`; // end media-main
 
-    // Thumbnail strip
+    // Thumbnail strip — lazy loaded
     if(currentImages.length>1){
       html+=`<div class="thumb-strip" id="thumbStrip">`;
       currentImages.forEach((src,i)=>{
-        html+=`<div class="thumb-item${i===0?' active':''}" onclick="goToImage(${i})"><img src="${src}" alt="缩略图 ${i+1}"></div>`;
+        html+=`<div class="thumb-item${i===0?' active':''}" onclick="goToImage(${i})"><img src="${src}" alt="缩略图 ${i+1}" loading="lazy" decoding="async"></div>`;
       });
       html+=`</div>`;
     }
   }
 
-  // External link indicator for non-embeddable videos
+  // External link indicator
   if(itemType==='video'&&videoEmbed&&videoEmbed.type==='external'){
     html+=`<div style="padding:16px;text-align:center;">
       <a href="${escHtml(item.url)}" target="_blank" rel="noopener" class="back-btn" style="font-size:0.95rem;padding:12px 28px;">
@@ -654,11 +741,8 @@ async function renderDetail(){
 
   // ===== RIGHT: INFO PANEL =====
   html+=`<div class="detail-info">`;
-
-  // Type badge
   html+=`<div class="info-type-badge ${badgeClass}">${typeLabel}</div>`;
 
-  // Video source indicator
   if(itemType==='video'&&item.url&&!item.videoData){
     const sourceLabels={direct:'直链视频',bilibili:'哔哩哔哩',youtube:'YouTube',bilibili_short:'哔哩哔哩',external:'外部链接'};
     const sourceLabel=sourceLabels[videoEmbed.type]||'外部链接';
@@ -668,15 +752,12 @@ async function renderDetail(){
     </div>`;
   }
 
-  // Char display
   if(itemType==='char'&&item.char){
     html+=`<div class="info-char-display">${item.char}</div>`;
   }
 
-  // Title
   html+=`<h1 class="info-title">${item.title||'无标题'}</h1>`;
 
-  // Meta info
   html+=`<div class="info-meta">`;
   if(item.tool){
     html+=`<div class="meta-row">
@@ -698,7 +779,6 @@ async function renderDetail(){
 
   html+=`<div class="info-divider"></div>`;
 
-  // Description
   html+=`<div class="info-desc-label">&#x1F4DD; 作品简介</div>`;
   if(item.desc){
     html+=`<div class="info-desc">${escHtml(item.desc)}</div>`;
@@ -706,7 +786,6 @@ async function renderDetail(){
     html+=`<div class="info-desc empty">暂无描述</div>`;
   }
 
-  // Like button
   const isLiked=item.likes>0;
   html+=`<div class="info-actions">
     <button class="btn-like${isLiked?' liked':''}" id="likeBtn" onclick="toggleLike()">
@@ -718,8 +797,56 @@ async function renderDetail(){
   html+=`</div>`; // end detail-info
   html+=`</div>`; // end detail-grid
 
-  container.innerHTML=html;
-  document.title=(item.title||'无标题')+' - AIGC Studio';
+  return { html, item };
+}
+
+async function renderDetail(){
+  if(!itemId||!itemType){
+    renderNotFound('缺少作品参数');return;
+  }
+
+  // === Phase 1: Local data — render immediately ===
+  const localData=await getLocalData();
+  const localResult=buildDetailHtml(localData);
+
+  if(localResult){
+    const container=document.getElementById('detailContent');
+    container.innerHTML=localResult.html;
+    document.title=(localResult.item.title||'无标题')+' - AIGC Studio';
+    // Remove loader quickly since content is shown
+    const loader=document.getElementById('detailLoader');
+    if(loader) loader.style.display='none';
+  }else{
+    // No local data — show skeleton while waiting for cloud
+    showSkeleton();
+  }
+
+  // === Phase 2: Cloud sync in background ===
+  showDetailCloudLoading(true);
+  try{
+    const cloudData=await getData(); // timestamp-based merge in db.js
+    showDetailCloudLoading(false);
+
+    const cloudTs=cloudData._ts||0;
+    const localTs=localData._ts||0;
+
+    // Only re-render if cloud has newer data
+    if(cloudTs>localTs||!localResult){
+      const cloudResult=buildDetailHtml(cloudData);
+      if(cloudResult){
+        const container=document.getElementById('detailContent');
+        container.innerHTML=cloudResult.html;
+        document.title=(cloudResult.item.title||'无标题')+' - AIGC Studio';
+        const loader=document.getElementById('detailLoader');
+        if(loader) loader.style.display='none';
+      }else if(!localResult){
+        renderNotFound('未找到该作品');
+      }
+    }
+  }catch(e){
+    showDetailCloudLoading(false);
+    if(!localResult) renderNotFound('未找到该作品');
+  }
 }
 
 function escHtml(str){
@@ -835,13 +962,9 @@ document.addEventListener('keydown',function(e){
 });
 
 // ===== INIT =====
+// Show skeleton immediately while local data loads
+showSkeleton();
 renderDetail();
-
-// Remove loading bar after render
-setTimeout(()=>{
-  const loader=document.getElementById('detailLoader');
-  if(loader) loader.style.display='none';
-},700);
 </script>
 </body>
 </html>
