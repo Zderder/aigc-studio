@@ -1058,40 +1058,45 @@ function previewFile(input,previewId,zoneId){
 }
 
 // ===== IMAGE COMPRESSION =====
-function compressImage(dataUrl,maxSize){
-  maxSize=maxSize||1600;
+// maxSize: 最长边像素上限（默认1200，云端友好）
+// targetBytes: 单张目标字节上限（默认200KB Base64，约150KB实际图片）
+function compressImage(dataUrl, maxSize, targetBytes){
+  maxSize = maxSize || 1200;
+  targetBytes = targetBytes || 200000; // 200KB Base64 upper limit
   return new Promise(resolve=>{
     const img=new Image();
     img.onload=()=>{
-      let w=img.width,h=img.height;
-      // Resize if needed
+      let w=img.width, h=img.height;
+      // Step 1: Resize if exceeds maxSize
       if(w>maxSize||h>maxSize){
         if(w>h){h=Math.round(h*maxSize/w);w=maxSize;}
         else{w=Math.round(w*maxSize/h);h=maxSize;}
       }
       const canvas=document.createElement('canvas');
-      canvas.width=w;canvas.height=h;
+      canvas.width=w; canvas.height=h;
       const ctx=canvas.getContext('2d');
       ctx.drawImage(img,0,0,w,h);
-      // Try JPEG first (smaller), fallback to PNG for transparency
-      let quality=0.82;
+      // Step 2: Encode as JPEG, start at quality 0.78
+      let quality=0.78;
       let result=canvas.toDataURL('image/jpeg',quality);
-      // If too large, reduce quality
-      while(result.length>500000&&quality>0.3){
-        quality-=0.1;
+      // Step 3: Reduce quality until within target size
+      while(result.length > targetBytes && quality > 0.25){
+        quality = Math.max(0.25, quality - 0.08);
         result=canvas.toDataURL('image/jpeg',quality);
       }
-      // Check if original had transparency (PNG/GIF with alpha)
-      if(dataUrl.includes('image/png')||dataUrl.includes('image/gif')){
-        try{
-          const tmpCtx=canvas.getContext('2d');
-          const pixel=tmpCtx.getImageData(0,0,1,1).data;
-          // Use JPEG anyway for size (transparency rarely critical for portfolio)
-        }catch(e){}
+      // Step 4: If still too large, scale down further (half resolution)
+      if(result.length > targetBytes * 1.5){
+        const w2=Math.round(w*0.7), h2=Math.round(h*0.7);
+        const canvas2=document.createElement('canvas');
+        canvas2.width=w2; canvas2.height=h2;
+        canvas2.getContext('2d').drawImage(img,0,0,w2,h2);
+        const r2=canvas2.toDataURL('image/jpeg', 0.72);
+        if(r2.length < result.length) result=r2;
       }
       const origKb=Math.round(dataUrl.length/1024);
       const compKb=Math.round(result.length/1024);
-      console.log(`[AIGC] 图片压缩: ${origKb}KB → ${compKb}KB (${Math.round((1-compKb/origKb)*100)}%)`);
+      const saved=Math.round((1-compKb/origKb)*100);
+      console.log(`[AIGC] 图片压缩: ${origKb}KB → ${compKb}KB (节省${saved}%, 质量${Math.round(quality*100)}%)`);
       resolve(result);
     };
     img.onerror=()=>resolve(dataUrl); // fallback to original on error
@@ -1100,22 +1105,47 @@ function compressImage(dataUrl,maxSize){
 }
 
 // ===== MULTI-FILE UPLOAD =====
-async function previewMultipleFiles(input,type){
+async function previewMultipleFiles(input, type){
   const files=Array.from(input.files);
   if(!files.length) return;
+
+  // Show compression progress hint
+  const prefixMap={painting:'p',poster:'po',char:'c'};
+  const container=document.getElementById(prefixMap[type]+'-previews');
+  if(container && files.length>1){
+    container.innerHTML=`<div style="padding:16px;color:var(--text-secondary);font-size:0.82rem;">⚙️ 正在压缩图片 (0/${files.length})...</div>`;
+  }
+
   let loaded=0;
+  let totalOrig=0, totalComp=0;
   for(const file of files){
     const reader=new FileReader();
     const dataUrl=await new Promise(r=>{
       reader.onload=e=>r(e.target.result);
       reader.readAsDataURL(file);
     });
+    totalOrig+=dataUrl.length;
     // Compress image before storing
-    const compressed=await compressImage(dataUrl,1600);
+    const compressed=await compressImage(dataUrl);
+    totalComp+=compressed.length;
     fileData[type].push(compressed);
     loaded++;
-    if(loaded===files.length) renderPreviewGrid(type);
+    // Update progress
+    if(container && files.length>1){
+      container.innerHTML=`<div style="padding:16px;color:var(--text-secondary);font-size:0.82rem;">⚙️ 正在压缩图片 (${loaded}/${files.length})...</div>`;
+    }
   }
+
+  // Show size saved toast if notable
+  if(files.length>=1 && totalOrig>0){
+    const saved=Math.round((1-totalComp/totalOrig)*100);
+    if(saved>=10){
+      const origMb=(totalOrig/1024/1024).toFixed(1);
+      const compKb=Math.round(totalComp/1024);
+      showToast(`图片已压缩：${origMb}MB → ${compKb<1024?compKb+'KB':(compKb/1024).toFixed(1)+'MB'}，节省 ${saved}%`);
+    }
+  }
+  renderPreviewGrid(type);
 }
 
 function renderPreviewGrid(type){

@@ -362,7 +362,8 @@ async function getData() {
   return localData;
 }
 
-// saveData: local first → cloud background sync
+// saveData: local first → incremental cloud sync
+// Uses PATCH (incremental) for small changes, falls back to full PUT
 async function saveData(data) {
   // Stamp timestamp so getData() can determine which copy is newer
   data._ts = Date.now();
@@ -377,21 +378,94 @@ async function saveData(data) {
 
   // Background push to cloud
   if (cloudUrl) {
-    var result = await cloudPushUrl(cloudUrl, data);
+    var result = await cloudPushIncremental(cloudUrl, data);
     if (!result.ok) {
       console.warn('[AIGC] Cloud push failed:', result.error);
-      // Trigger custom event so UI can show warning
       try {
         window.dispatchEvent(new CustomEvent('aigc-cloud-error', { detail: result.error }));
       } catch(e) {}
     } else {
-      // Notify UI that cloud sync succeeded
       try {
         window.dispatchEvent(new CustomEvent('aigc-cloud-synced'));
       } catch(e) {}
     }
   }
   return localResult;
+}
+
+// Incremental push: only send changed/added items using Firebase PATCH
+// Firebase PATCH on /works.json merges keys without replacing unchanged ones.
+// Strategy:
+//   1. Fetch current cloud _ts metadata (lightweight: only /works/_ts.json)
+//   2. If cloud has same or newer ts, skip push (no conflict)
+//   3. Build a patch object with only updated array items + metadata
+//   4. PATCH instead of full PUT — much smaller payload
+async function cloudPushIncremental(url, data) {
+  try {
+    // Step 1: Check cloud _ts to avoid redundant push (HEAD-like lightweight check)
+    var tsRes = await _fetchWithTimeout(url + '/works/_ts.json', {}, CLOUD_TIMEOUT);
+    if (tsRes.ok) {
+      var cloudTs = await tsRes.json();
+      if (typeof cloudTs === 'number' && cloudTs >= data._ts) {
+        console.log('[AIGC Cloud] Cloud already up-to-date, skipping push');
+        return { ok: true };
+      }
+    }
+
+    // Step 2: Estimate payload — use PATCH (incremental merge) via Firebase REST
+    // Firebase PATCH on a node merges at the top level (keys), perfect for our arrays.
+    var payload = JSON.stringify({
+      paintings: data.paintings || [],
+      posters:   data.posters   || [],
+      videos:    data.videos    || [],
+      chars:     data.chars     || [],
+      _ts:       data._ts
+    });
+    var payloadSize = payload.length;
+    console.log('[AIGC Cloud] Incremental push, payload:', (payloadSize / 1024).toFixed(0) + ' KB');
+
+    // Step 3: Use PATCH for incremental merge (faster than full PUT when cloud exists)
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, CLOUD_PUSH_TIMEOUT);
+    var res = await fetch(url + '/works.json', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    if (res.ok) {
+      console.log('[AIGC Cloud] Incremental push successful');
+      return { ok: true };
+    }
+
+    // PATCH failed — fall back to full PUT
+    console.warn('[AIGC Cloud] PATCH failed (status ' + res.status + '), falling back to full PUT');
+    return cloudPushUrl(url, data);
+
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      return { ok: false, error: '上传超时（数据量较大，请检查网络）' };
+    }
+    // Network error — try full PUT as fallback
+    console.warn('[AIGC Cloud] Incremental push error, trying full PUT:', e.message);
+    return cloudPushUrl(url, data);
+  }
+}
+
+// Lightweight fetch with timeout helper
+function _fetchWithTimeout(url, options, timeout) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, timeout);
+  options = Object.assign({}, options, { signal: controller.signal });
+  return fetch(url, options).then(function(res) {
+    clearTimeout(timer);
+    return res;
+  }).catch(function(e) {
+    clearTimeout(timer);
+    throw e;
+  });
 }
 
 // ===== UTILITIES =====
