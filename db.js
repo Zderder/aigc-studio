@@ -45,6 +45,8 @@ function normalizeData(data) {
   if (!Array.isArray(data.posters)) data.posters = [];
   if (!Array.isArray(data.videos)) data.videos = [];
   if (!Array.isArray(data.chars)) data.chars = [];
+  if (!data.bio || typeof data.bio !== 'object') data.bio = {name:'朱登乾',title:'AIGC创作者',desc:'',avatar:'',tags:[]};
+  if (!data.contact || typeof data.contact !== 'object') data.contact = {email:'',phone:'',wechat:'',weibo:'',bilibili:'',extra:''};
   return data;
 }
 

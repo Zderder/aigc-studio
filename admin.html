@@ -629,6 +629,9 @@
         <span class="nav-icon">✨</span> 超级字符
         <span class="nav-badge" id="badge-char">0</span>
       </div>
+      <div class="nav-item" data-tab="pagecontent" onclick="switchTab('pagecontent',this)">
+        <span class="nav-icon">📄</span> 页面内容
+      </div>
       <div class="nav-item" data-tab="settings" onclick="switchTab('settings',this)">
         <span class="nav-icon">⚙️</span> 设置
       </div>
@@ -924,6 +927,64 @@
       <!-- ===== 设置 ===== -->
       <div class="tab-panel" id="tab-settings">
         <div class="upload-area">
+          <h3>👤 个人简介编辑</h3>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+            编辑主页「个人简介」弹窗中的内容，点击保存后前台刷新即可看到。
+          </p>
+          <div class="form-grid">
+            <div class="form-group half">
+              <label class="form-label">姓名</label>
+              <input class="form-input" id="bio-name" placeholder="朱登乾">
+            </div>
+            <div class="form-group half">
+              <label class="form-label">身份标签</label>
+              <input class="form-input" id="bio-title" placeholder="AIGC创作者">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">个人简介（支持换行）</label>
+              <textarea class="form-textarea" id="bio-desc" rows="6" placeholder="写一段自我介绍..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">技能标签（逗号分隔）</label>
+              <input class="form-input" id="bio-tags" placeholder="AI绘画, 视频创作, 3D设计">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="saveBio()">💾 保存简介</button>
+          </div>
+        </div>
+
+        <div class="upload-area" style="margin-top:20px;">
+          <h3>📬 联系方式编辑</h3>
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+            编辑主页「联系我」弹窗中的联系方式。留空的字段不会在前台显示。
+          </p>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">📞 电话</label>
+              <input class="form-input" id="contact-phone" placeholder="138-xxxx-xxxx">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">✉️ 邮箱</label>
+              <input class="form-input" id="contact-email" placeholder="example@email.com">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">💬 微信</label>
+              <input class="form-input" id="contact-wechat" placeholder="微信号">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">补充说明（可选）</label>
+              <textarea class="form-textarea" id="contact-extra" rows="3" placeholder="其他补充信息，留言等..."></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-submit" onclick="saveContact()">💾 保存联系方式</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-settings">
+        <div class="upload-area">
           <h3>⚙️ 系统设置</h3>
           <div class="form-grid">
             <div class="form-group full">
@@ -1083,8 +1144,9 @@ function switchTab(tab,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(el) el.classList.add('active');
-  const titles={overview:'总览',painting:'AI绘画管理',poster:'AI海报管理',video:'AI视频管理',char:'超级字符管理',settings:'设置'};
+  const titles={overview:'总览',painting:'AI绘画管理',poster:'AI海报管理',video:'AI视频管理',char:'超级字符管理',pagecontent:'页面内容',settings:'设置'};
   document.getElementById('topbarTitle').textContent=titles[tab]||tab;
+  if(tab==='pagecontent') loadPageContent();
 }
 
 // ===== FILE HANDLING =====
@@ -2161,6 +2223,53 @@ function closeEditModal(){
 document.getElementById('editOverlay').addEventListener('click', function(e){
   if(e.target === this) closeEditModal();
 });
+
+// ===== PAGE CONTENT (BIO & CONTACT) =====
+async function loadPageContent(){
+  try{
+    var data=await getLocalData();
+    var bio=data.bio||{name:'',title:'',desc:'',tags:[]};
+    document.getElementById('bio-name').value=bio.name||'';
+    document.getElementById('bio-title').value=bio.title||'';
+    document.getElementById('bio-desc').value=bio.desc||'';
+    document.getElementById('bio-tags').value=(bio.tags||[]).join(', ');
+    var c=data.contact||{};
+    document.getElementById('contact-email').value=c.email||'';
+    document.getElementById('contact-phone').value=c.phone||'';
+    document.getElementById('contact-wechat').value=c.wechat||'';
+    document.getElementById('contact-extra').value=c.extra||'';
+  }catch(e){console.error('loadPageContent:',e);}
+}
+
+async function saveBio(){
+  try{
+    var data=await getLocalData();
+    var tagsRaw=document.getElementById('bio-tags').value;
+    var tags=tagsRaw?tagsRaw.split(/[,，]/).map(function(t){return t.trim();}).filter(Boolean):[];
+    data.bio={
+      name:document.getElementById('bio-name').value.trim(),
+      title:document.getElementById('bio-title').value.trim(),
+      desc:document.getElementById('bio-desc').value.trim(),
+      tags:tags
+    };
+    await saveData(data);
+    showToast('✅ 个人简介已保存','success');
+  }catch(e){console.error('saveBio:',e);showToast('保存失败','error');}
+}
+
+async function saveContact(){
+  try{
+    var data=await getLocalData();
+    data.contact={
+      email:document.getElementById('contact-email').value.trim(),
+      phone:document.getElementById('contact-phone').value.trim(),
+      wechat:document.getElementById('contact-wechat').value.trim(),
+      extra:document.getElementById('contact-extra').value.trim()
+    };
+    await saveData(data);
+    showToast('✅ 联系方式已保存','success');
+  }catch(e){console.error('saveContact:',e);showToast('保存失败','error');}
+}
 </script>
 </body>
 </html>

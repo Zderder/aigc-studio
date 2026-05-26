@@ -457,6 +457,106 @@
   ::-webkit-scrollbar-track{background:#040812;}
   ::-webkit-scrollbar-thumb{background:rgba(124,58,237,0.4);border-radius:3px;}
 
+  /* ===== MODALS ===== */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:1000;
+    background:rgba(0,0,0,0.7);
+    backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;visibility:hidden;
+    transition:opacity .3s,visibility .3s;
+  }
+  .modal-overlay.show{opacity:1;visibility:visible;}
+  .modal-box{
+    background:linear-gradient(160deg,rgba(15,20,40,0.98),rgba(8,12,30,0.98));
+    border:1px solid rgba(124,58,237,0.3);
+    border-radius:20px;padding:40px;
+    max-width:560px;width:90%;
+    max-height:85vh;overflow-y:auto;
+    position:relative;
+    box-shadow:0 0 60px rgba(124,58,237,0.15),0 20px 60px rgba(0,0,0,0.5);
+    transform:translateY(20px);
+    transition:transform .35s cubic-bezier(.22,1,.36,1);
+  }
+  .modal-overlay.show .modal-box{transform:translateY(0);}
+  .modal-close{
+    position:absolute;top:16px;right:20px;
+    width:36px;height:36px;border-radius:50%;
+    border:1px solid rgba(124,58,237,0.2);
+    background:rgba(15,20,40,0.9);
+    color:#94a3b8;font-size:1.2rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .25s;
+  }
+  .modal-close:hover{color:#fff;border-color:#7c3aed;background:rgba(124,58,237,0.2);}
+  .modal-avatar{
+    width:80px;height:80px;border-radius:50%;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    display:flex;align-items:center;justify-content:center;
+    font-size:2rem;color:#fff;margin:0 auto 20px;
+    overflow:hidden;flex-shrink:0;
+  }
+  .modal-avatar img{width:100%;height:100%;object-fit:cover;}
+  .modal-name{
+    font-size:1.5rem;font-weight:700;text-align:center;
+    background:linear-gradient(135deg,#a78bfa,#67e8f9);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .modal-title-tag{
+    text-align:center;color:#94a3b8;font-size:0.9rem;margin:6px 0 20px;
+  }
+  .modal-desc{
+    color:#cbd5e1;line-height:1.8;font-size:0.95rem;text-align:justify;
+    margin-bottom:24px;
+  }
+  .modal-tags{
+    display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;
+  }
+  .modal-tag{
+    padding:4px 14px;border-radius:20px;
+    border:1px solid rgba(124,58,237,0.3);
+    background:rgba(124,58,237,0.08);
+    color:#a78bfa;font-size:0.82rem;
+  }
+  .contact-categories{
+    display:flex;flex-direction:column;gap:20px;
+  }
+  .contact-category{
+    border-radius:14px;overflow:hidden;
+  }
+  .contact-category-header{
+    display:flex;align-items:center;gap:10px;
+    padding-bottom:10px;margin-bottom:6px;
+    border-bottom:1px solid rgba(124,58,237,0.12);
+    font-size:0.95rem;font-weight:600;color:#e2e8f0;
+  }
+  .contact-category-icon{
+    width:34px;height:34px;border-radius:8px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1rem;
+  }
+  .contact-category-icon.phone{background:rgba(245,158,11,0.18);color:#f59e0b;}
+  .contact-category-icon.email{background:rgba(6,182,212,0.18);color:#06b6d4;}
+  .contact-category-icon.wechat{background:rgba(34,197,94,0.18);color:#22c55e;}
+  .contact-category-value{
+    padding:12px 16px;border-radius:10px;
+    background:rgba(124,58,237,0.04);
+    border:1px solid rgba(124,58,237,0.08);
+    color:#cbd5e1;font-size:0.93rem;word-break:break-all;line-height:1.6;
+    transition:all .25s;
+  }
+  .contact-category-value:hover{
+    background:rgba(124,58,237,0.08);border-color:rgba(124,58,237,0.2);
+    color:#e2e8f0;
+  }
+  .contact-extra{
+    margin-top:20px;padding:16px;
+    border-radius:12px;
+    background:rgba(124,58,237,0.04);
+    border:1px solid rgba(124,58,237,0.1);
+    color:#cbd5e1;line-height:1.8;font-size:0.88rem;text-align:center;
+  }
+
   /* ===== RESPONSIVE ===== */
   @media(max-width:768px){
     nav{padding:0 4%;}
@@ -519,12 +619,12 @@
     用AI创造无限艺术可能
   </p>
   <div class="hero-cta">
-    <a href="#video" class="btn-primary">
-      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm6.5-4.5a.5.5 0 0 1 .5.5v3.793l2.354 2.353a.5.5 0 0 1-.708.708L6.146 8.207A.5.5 0 0 1 6 7.85V4a.5.5 0 0 1 .5-.5z"/></svg>
-      探索作品
+    <a href="javascript:void(0)" class="btn-primary" onclick="openBioModal()">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1 0c-.002-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>
+      个人简介
     </a>
-    <a href="#superchar" class="btn-secondary">
-      超级字符艺术 →
+    <a href="javascript:void(0)" class="btn-secondary" onclick="openContactModal()">
+      联系我 →
     </a>
   </div>
   <div class="stats-bar" id="statsBar">
@@ -648,50 +748,63 @@
 </footer>
 </div>
 
+<!-- BIO MODAL -->
+<div class="modal-overlay" id="bioModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeBioModal()">✕</button>
+    <div class="modal-avatar" id="bioAvatar"><span>👤</span></div>
+    <div class="modal-name" id="bioName">朱登乾</div>
+    <div class="modal-title-tag" id="bioTitle">AIGC创作者</div>
+    <div class="modal-desc" id="bioDesc">加载中...</div>
+    <div class="modal-tags" id="bioTags"></div>
+  </div>
+</div>
+
+<!-- CONTACT MODAL -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeContactModal()">✕</button>
+    <div class="modal-avatar"><span>📬</span></div>
+    <div class="modal-name">联系我</div>
+    <div class="contact-categories" id="contactCategories"></div>
+    <div class="contact-extra" id="contactExtra" style="display:none"></div>
+  </div>
+</div>
+
+
+
 
 <!-- SHARED DB LAYER (IndexedDB) -->
 <script src="db.js"></script>
 
 <script>
-// ===== NEURAL CANVAS — AI × Art =====
+// ===== NEURAL CANVAS — AI x Art =====
 (function(){
   try{
-  const canvas=document.getElementById('neural-canvas');
+  var canvas=document.getElementById('neural-canvas');
   if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  let W,H,time=0;
-  let mx=window.innerWidth/2,my=window.innerHeight/2;
-  let smx=mx,smy=my;
-  let pmx=mx,pmy=my; // previous mouse pos for velocity
-  let mSpeed=0;
+  var ctx=canvas.getContext('2d');
+  var W,H,time=0;
+  var mx=window.innerWidth/2,my=window.innerHeight/2;
+  var smx=mx,smy=my,pmx=mx,pmy=my,mSpeed=0;
 
   function resize(){
     W=canvas.width=window.innerWidth;
     H=canvas.height=window.innerHeight;
   }
 
-  // Mouse tracking + velocity
   window.addEventListener('mousemove',function(e){
-    pmx=mx;pmy=my;
-    mx=e.clientX;my=e.clientY;
+    pmx=mx;pmy=my;mx=e.clientX;my=e.clientY;
   });
 
-  // ===== NEURAL NODES (AI neurons) =====
+  // ===== NEURAL NODES =====
   var nodes=[];
   function initNodes(){
     nodes=[];
-    var count=28;
-    for(var i=0;i<count;i++){
-      nodes.push({
-        x:W*0.1+Math.random()*W*0.8,
-        y:H*0.1+Math.random()*H*0.8,
-        r:1.5+Math.random()*3.5,
-        pulse:Math.random()*Math.PI*2,
-        ps:0.006+Math.random()*0.018,
-        connections:[]
-      });
+    for(var i=0;i<28;i++){
+      nodes.push({x:W*0.1+Math.random()*W*0.8,y:H*0.1+Math.random()*H*0.8,
+        r:1.5+Math.random()*3.5,pulse:Math.random()*Math.PI*2,ps:0.006+Math.random()*0.018,connections:[]});
     }
-    // Each node connects to 2-3 nearest neighbors
     for(var i=0;i<nodes.length;i++){
       var dists=[];
       for(var j=0;j<nodes.length;j++){
@@ -700,32 +813,22 @@
         dists.push({idx:j,dist:dx*dx+dy*dy});
       }
       dists.sort(function(a,b){return a.dist-b.dist;});
-      var cc=2+(i%3);
-      nodes[i].connections=dists.slice(0,cc).map(function(d){return d.idx;});
+      nodes[i].connections=dists.slice(0,2+(i%3)).map(function(d){return d.idx;});
     }
   }
 
-  // ===== MORPHING GEOMETRY (AI-generated art) — with magnetic cursor =====
-  var morphShapes=[];
+  // ===== MORPHING GEOMETRY =====
+  var shapes=[];
   function initShapes(){
-    morphShapes=[];
+    shapes=[];
     for(var i=0;i<120;i++){
       var sx=Math.random()*W,sy=Math.random()*H;
-      morphShapes.push({
-        ox:sx,oy:sy,
-        x:sx,y:sy,
-        vx:(Math.random()-0.5)*0.35,
-        vy:(Math.random()-0.5)*0.35,
-        baseSides:3+Math.floor(Math.random()*5),
-        targetSides:3+Math.floor(Math.random()*5),
-        radius:10+Math.random()*24,
-        rotation:Math.random()*Math.PI*2,
-        rotSpeed:(Math.random()-0.5)*0.005,
-        morphT:Math.random(),
-        morphSpeed:0.002+Math.random()*0.007,
-        color:['124,58,237','6,182,212','245,158,11','236,72,153'][Math.floor(Math.random()*4)],
-        alpha:1.0
-      });
+      shapes.push({ox:sx,oy:sy,x:sx,y:sy,
+        vx:(Math.random()-0.5)*0.35,vy:(Math.random()-0.5)*0.35,
+        baseSides:3+Math.floor(Math.random()*5),targetSides:3+Math.floor(Math.random()*5),
+        radius:10+Math.random()*24,rotation:Math.random()*Math.PI*2,
+        rotSpeed:(Math.random()-0.5)*0.005,morphT:Math.random(),morphSpeed:0.002+Math.random()*0.007,
+        color:['124,58,237','6,182,212','245,158,11','236,72,153'][Math.floor(Math.random()*4)],alpha:1});
     }
   }
 
@@ -734,24 +837,15 @@
   function initParticles(){
     particles=[];
     for(var i=0;i<18;i++){
-      particles.push({
-        x:Math.random()*W,
-        y:Math.random()*H,
-        vx:(Math.random()-0.5)*0.12,
-        vy:(Math.random()-0.5)*0.12-0.04,
-        r:0.3+Math.random()*1.0,
-        pulse:Math.random()*Math.PI*2,
-        ps:0.008+Math.random()*0.022,
-        color:['#7c3aed','#06b6d4','#f59e0b','#ec4899','#a78bfa'][Math.floor(Math.random()*5)]
-      });
+      particles.push({x:Math.random()*W,y:Math.random()*H,
+        vx:(Math.random()-0.5)*0.12,vy:(Math.random()-0.5)*0.12-0.04,
+        r:0.3+Math.random()*1,pulse:Math.random()*Math.PI*2,ps:0.008+Math.random()*0.022,
+        color:['#7c3aed','#06b6d4','#f59e0b','#ec4899','#a78bfa'][Math.floor(Math.random()*5)]});
     }
   }
 
-  // Init all
   resize();initNodes();initShapes();initParticles();
-  window.addEventListener('resize',function(){
-    resize();initNodes();initShapes();initParticles();
-  });
+  window.addEventListener('resize',function(){resize();initNodes();initShapes();initParticles();});
 
   function drawPoly(ctx,cx,cy,sides,r,rot){
     ctx.beginPath();
@@ -765,186 +859,123 @@
 
   function draw(){
     time+=0.016;
-    smx+=(mx-smx)*0.025;
-    smy+=(my-smy)*0.025;
-    // Mouse speed (pixels/frame) with decay
+    smx+=(mx-smx)*0.025;smy+=(my-smy)*0.025;
     var rawSpeed=Math.sqrt((mx-pmx)*(mx-pmx)+(my-pmy)*(my-pmy));
-    mSpeed=mSpeed*0.85+rawSpeed*0.15;
-    pmx=mx;pmy=my;
+    mSpeed=mSpeed*0.85+rawSpeed*0.15;pmx=mx;pmy=my;
 
-    // Dark clear with slight persistence for trail effect
-    ctx.fillStyle='rgba(3,6,16,0.28)';
-    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(3,6,16,0.28)';ctx.fillRect(0,0,W,H);
 
-    // ===== NEURAL CONNECTIONS (synapses) =====
+    // Synapses
     for(var ni=0;ni<nodes.length;ni++){
       var nd=nodes[ni];
       for(var ci=0;ci<nd.connections.length;ci++){
         var tg=nodes[nd.connections[ci]];
-        if(!tg||nd.connections[ci]<=ni)continue; // draw each pair once
+        if(!tg||nd.connections[ci]<=ni)continue;
         var mx2=(nd.x+tg.x)/2,my2=(nd.y+tg.y)/2;
-        var dx=smx-mx2,dy=smy-my2;
-        var mdist=Math.sqrt(dx*dx+dy*dy);
-        var alpha=0.04;
-        if(mdist<200)alpha+=0.1*(1-mdist/200);
-        ctx.strokeStyle='rgba(124,58,237,'+alpha.toFixed(3)+')';
-        ctx.lineWidth=0.5;
+        var dx=smx-mx2,dy=smy-my2,mdist=Math.sqrt(dx*dx+dy*dy);
+        var alpha=0.04+(mdist<200?0.1*(1-mdist/200):0);
+        ctx.strokeStyle='rgba(124,58,237,'+alpha.toFixed(3)+')';ctx.lineWidth=0.5;
         ctx.beginPath();ctx.moveTo(nd.x,nd.y);ctx.lineTo(tg.x,tg.y);ctx.stroke();
       }
     }
 
-    // ===== NEURAL NODES =====
+    // Nodes
     for(var nni=0;nni<nodes.length;nni++){
-      var nn=nodes[nni];
-      nn.pulse+=nn.ps;
+      var nn=nodes[nni];nn.pulse+=nn.ps;
       var glow=0.4+0.6*Math.sin(nn.pulse);
-      var dxm=smx-nn.x,dym=smy-nn.y;
-      var dm=Math.sqrt(dxm*dxm+dym*dym);
+      var dxm=smx-nn.x,dym=smy-nn.y,dm=Math.sqrt(dxm*dxm+dym*dym);
       var boost=dm<140?(1-dm/140)*0.55:0;
-
-      // Outer halo
       var halo=ctx.createRadialGradient(nn.x,nn.y,0,nn.x,nn.y,nn.r*9);
       halo.addColorStop(0,'rgba(124,58,237,'+(glow*0.18+boost*0.7).toFixed(2)+')');
       halo.addColorStop(0.5,'rgba(6,182,212,'+(glow*0.06+boost*0.2).toFixed(2)+')');
       halo.addColorStop(1,'transparent');
-      ctx.fillStyle=halo;
-      ctx.fillRect(nn.x-nn.r*9,nn.y-nn.r*9,nn.r*18,nn.r*18);
-
-      // Core dot
-      ctx.beginPath();
-      ctx.arc(nn.x,nn.y,nn.r*(0.65+boost),0,Math.PI*2);
-      ctx.fillStyle='rgba(210,220,255,'+(glow*0.65+boost*0.5).toFixed(2)+')';
-      ctx.fill();
+      ctx.fillStyle=halo;ctx.fillRect(nn.x-nn.r*9,nn.y-nn.r*9,nn.r*18,nn.r*18);
+      ctx.beginPath();ctx.arc(nn.x,nn.y,nn.r*(0.65+boost),0,Math.PI*2);
+      ctx.fillStyle='rgba(210,220,255,'+(glow*0.65+boost*0.5).toFixed(2)+')';ctx.fill();
     }
 
-    // ===== GEOMETRY MESH — inter-shape connections =====
-    for(var gi=0;gi<morphShapes.length;gi++){
-      var ga=morphShapes[gi];
-      for(var gj=gi+1;gj<morphShapes.length;gj++){
-        var gb=morphShapes[gj];
-        var gdx=ga.x-gb.x,gdy=ga.y-gb.y;
+    // Shape mesh
+    for(var gi=0;gi<shapes.length;gi++){
+      for(var gj=gi+1;gj<shapes.length;gj++){
+        var gdx=shapes[gi].x-shapes[gj].x,gdy=shapes[gi].y-shapes[gj].y;
         var gd=gdx*gdx+gdy*gdy;
-        var gMax=200*200;
-        if(gd<gMax){
-          var ga2=Math.sqrt(gd);
-          var glAlpha=(1-ga2/200)*0.55;
-          ctx.strokeStyle='rgba(124,58,237,'+glAlpha.toFixed(3)+')';
-          ctx.lineWidth=0.8;
-          ctx.beginPath();ctx.moveTo(ga.x,ga.y);ctx.lineTo(gb.x,gb.y);ctx.stroke();
+        if(gd<200*200){
+          var ga=Math.sqrt(gd),glAlpha=(1-ga/200)*0.55;
+          ctx.strokeStyle='rgba(124,58,237,'+glAlpha.toFixed(3)+')';ctx.lineWidth=0.8;
+          ctx.beginPath();ctx.moveTo(shapes[gi].x,shapes[gi].y);ctx.lineTo(shapes[gj].x,shapes[gj].y);ctx.stroke();
         }
       }
     }
 
-    // ===== MORPHING GEOMETRY (magnetic cursor attraction) =====
-    for(var mi=0;mi<morphShapes.length;mi++){
-      var ms=morphShapes[mi];
-      // Magnetic pull — detaches at high mouse speed
-      var dxm2=mx-ms.x,dym2=my-ms.y;
-      var dm2=Math.sqrt(dxm2*dxm2+dym2*dym2);
-      var magRange=240;
-      // Speed threshold: magnetic force linearly decreases with speed, zero at 600px/frame
-      var speedFactor=Math.max(0,1-mSpeed/600);
-      var isPulled=false;
+    // Shapes
+    for(var mi=0;mi<shapes.length;mi++){
+      var ms=shapes[mi];
+      var dxm2=mx-ms.x,dym2=my-ms.y,dm2=Math.sqrt(dxm2*dxm2+dym2*dym2);
+      var magRange=240,speedFactor=Math.max(0,1-mSpeed/600),isPulled=false;
       if(dm2<magRange&&dm2>1&&speedFactor>0){
-        var force=(1-dm2/magRange);
-        force=force*force*speedFactor;
-        var pullX=dxm2/dm2*force*6;
-        var pullY=dym2/dm2*force*6-force*0.8;
-        ms.x+=pullX;ms.y+=pullY;
-        isPulled=true;
+        var force=(1-dm2/magRange);force=force*force*speedFactor;
+        ms.x+=dxm2/dm2*force*6;ms.y+=dym2/dm2*force*6-force*0.8;isPulled=true;
       }
-      // Free slow drift
       ms.x+=ms.vx;ms.y+=ms.vy;
-      // Repulsion from nearby shapes — fast spread when not pulled
       if(!isPulled){
-        for(var rj=0;rj<morphShapes.length;rj++){
+        for(var rj=0;rj<shapes.length;rj++){
           if(rj===mi)continue;
-          var mr=morphShapes[rj];
-          var rdx=ms.x-mr.x,rdy=ms.y-mr.y;
-          var rd=rdx*rdx+rdy*rdy;
-          var repelRange=160;
-          if(rd<repelRange*repelRange&&rd>1){
-            var rd2=Math.sqrt(rd);
-            var rForce=(1-rd2/repelRange);
-            rForce=rForce*rForce*1.2;
-            ms.x+=rdx/rd2*rForce;
-            ms.y+=rdy/rd2*rForce;
+          var mr=shapes[rj],rdx=ms.x-mr.x,rdy=ms.y-mr.y,rd=rdx*rdx+rdy*rdy;
+          if(rd<160*160&&rd>1){
+            var rd2=Math.sqrt(rd),rForce=(1-rd2/160);rForce=rForce*rForce*1.2;
+            ms.x+=rdx/rd2*rForce;ms.y+=rdy/rd2*rForce;
           }
         }
       }
-      ms.rotation+=ms.rotSpeed;
-      ms.morphT+=ms.morphSpeed;
-      // Wrap
+      ms.rotation+=ms.rotSpeed;ms.morphT+=ms.morphSpeed;
       if(ms.x<-120)ms.x=W+120;if(ms.x>W+120)ms.x=-120;
       if(ms.y<-120)ms.y=H+120;if(ms.y>H+120)ms.y=-120;
-      if(ms.morphT>=1){
-        ms.morphT=0;ms.baseSides=ms.targetSides;
-        ms.targetSides=3+Math.floor(Math.random()*5);
-        ms.radius=10+Math.random()*24;
-      }
+      if(ms.morphT>=1){ms.morphT=0;ms.baseSides=ms.targetSides;ms.targetSides=3+Math.floor(Math.random()*5);ms.radius=10+Math.random()*24;}
       var t2=ms.morphT<0.5?2*ms.morphT*ms.morphT:1-Math.pow(-2*ms.morphT+2,2)/2;
       var curSides=ms.baseSides+(ms.targetSides-ms.baseSides)*t2;
-      // Recalc distance for brightness
-      var dxmb=mx-ms.x,dymb=my-ms.y;
-      var dmb=Math.sqrt(dxmb*dxmb+dymb*dymb);
+      var dxmb=mx-ms.x,dymb=my-ms.y,dmb=Math.sqrt(dxmb*dxmb+dymb*dymb);
       var pb=isPulled?(1-dmb/magRange)*speedFactor*0.9:0;
       var a=Math.min(1,ms.alpha+pb*0.15);
-      // Neon outer bloom — very wide soft glow
-      ctx.strokeStyle='rgba('+ms.color+','+(a*0.18).toFixed(3)+')';
-      ctx.lineWidth=ms.radius*0.7+pb*16;
+      ctx.strokeStyle='rgba('+ms.color+','+(a*0.18).toFixed(3)+')';ctx.lineWidth=ms.radius*0.7+pb*16;
       drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius,ms.rotation);
-      // Neon halo — medium wide
-      ctx.strokeStyle='rgba('+ms.color+','+(a*0.5).toFixed(2)+')';
-      ctx.lineWidth=ms.radius*0.44+pb*11;
+      ctx.strokeStyle='rgba('+ms.color+','+(a*0.5).toFixed(2)+')';ctx.lineWidth=ms.radius*0.44+pb*11;
       drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius,ms.rotation);
-      // Neon tube core — fluorescent line with shadowBlur
-      ctx.shadowColor='rgb('+ms.color+')';
-      ctx.shadowBlur=10+pb*12;
-      ctx.strokeStyle='rgba(255,255,255,1.0)';
-      ctx.lineWidth=2.8+pb*4;
+      ctx.shadowColor='rgb('+ms.color+')';ctx.shadowBlur=10+pb*12;
+      ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=2.8+pb*4;
       drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius,ms.rotation);
-      // Reset shadow for inner detail
       ctx.shadowBlur=0;
-      // Inner white-hot wire
-      ctx.strokeStyle='rgba(255,255,255,'+(a*0.8+pb*0.2).toFixed(2)+')';
-      ctx.lineWidth=1.3+pb*2;
+      ctx.strokeStyle='rgba(255,255,255,'+(a*0.8+pb*0.2).toFixed(2)+')';ctx.lineWidth=1.3+pb*2;
       drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius*0.55,ms.rotation+Math.PI/curSides);
     }
 
-    // ===== AMBIENT PARTICLES =====
+    // Ambient particles
     for(var api=0;api<particles.length;api++){
       var ap=particles[api];
       ap.x+=ap.vx;ap.y+=ap.vy;ap.pulse+=ap.ps;
       if(ap.x<-30)ap.x=W+30;if(ap.x>W+30)ap.x=-30;
       if(ap.y<-30)ap.y=H+30;if(ap.y>H+30)ap.y=-30;
       var ag=0.3+0.7*Math.sin(ap.pulse);
-      ctx.beginPath();
-      ctx.arc(ap.x,ap.y,ap.r,0,Math.PI*2);
-      ctx.fillStyle=ap.color+Math.floor(ag*14).toString(16).padStart(2,'0');
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(ap.x,ap.y,ap.r*1.5,0,Math.PI*2);
-      ctx.fillStyle=ap.color+Math.floor(ag*2).toString(16).padStart(2,'0');
-      ctx.fill();
+      ctx.beginPath();ctx.arc(ap.x,ap.y,ap.r,0,Math.PI*2);
+      ctx.fillStyle=ap.color+Math.floor(ag*14).toString(16).padStart(2,'0');ctx.fill();
+      ctx.beginPath();ctx.arc(ap.x,ap.y,ap.r*1.5,0,Math.PI*2);
+      ctx.fillStyle=ap.color+Math.floor(ag*2).toString(16).padStart(2,'0');ctx.fill();
     }
 
-    // ===== VIGNETTE =====
+    // Vignette
     var vig=ctx.createRadialGradient(W/2,H*0.5,W*0.38,W/2,H*0.5,W*0.82);
     vig.addColorStop(0,'transparent');
     vig.addColorStop(0.65,'rgba(3,6,16,0.3)');
     vig.addColorStop(1,'rgba(3,6,16,0.72)');
-    ctx.fillStyle=vig;
-    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
 
     requestAnimationFrame(draw);
   }
   draw();
 
   }catch(e){
-    console.warn('[BG] Canvas fallback — using static gradient');
+    console.warn('[BG] Canvas fallback:',e);
     document.body.style.background='linear-gradient(180deg,#030610 0%,#0a0f25 40%,#040812 100%)';
-    var c=document.getElementById('neural-canvas');
-    if(c)c.style.display='none';
+    var c=document.getElementById('neural-canvas');if(c)c.style.display='none';
   }
 })();
 
@@ -1210,6 +1241,67 @@ function animateCounter(el,target){
     if(current>=target) clearInterval(timer);
   },40);
 }
+
+// ===== BIO & CONTACT MODALS =====
+async function openBioModal(){
+  var overlay=document.getElementById('bioModal');
+  if(!overlay)return;
+  try{
+    var data=await getLocalData();
+    var bio=data.bio||{name:'朱登乾',title:'AIGC创作者',desc:'',avatar:'',tags:[]};
+    document.getElementById('bioName').textContent=bio.name||'朱登乾';
+    document.getElementById('bioTitle').textContent=bio.title||'AIGC创作者';
+    document.getElementById('bioDesc').innerHTML=(bio.desc||'暂无简介').replace(/\\n/g,'<br>');
+    var avatarEl=document.getElementById('bioAvatar');
+    if(bio.avatar){
+      avatarEl.innerHTML='<img src="'+bio.avatar+'" alt="avatar">';
+    }else{
+      avatarEl.innerHTML='<span>👤</span>';
+    }
+    var tagsEl=document.getElementById('bioTags');
+    var tags=bio.tags||[];
+    tagsEl.innerHTML=tags.length?tags.map(function(t){return '<span class="modal-tag">'+t+'</span>';}).join(''):'';
+  }catch(e){console.warn('openBioModal:',e);}
+  overlay.classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeBioModal(){
+  var overlay=document.getElementById('bioModal');
+  if(overlay)overlay.classList.remove('show');
+  document.body.style.overflow='';
+}
+
+async function openContactModal(){
+  var overlay=document.getElementById('contactModal');
+  if(!overlay)return;
+  try{
+    var data=await getLocalData();
+    var c=data.contact||{};
+    var sections=[];
+    if(c.phone) sections.push({type:'phone',label:'电话',value:c.phone,icon:'📞'});
+    if(c.email) sections.push({type:'email',label:'邮箱',value:c.email,icon:'✉️'});
+    if(c.wechat) sections.push({type:'wechat',label:'微信',value:c.wechat,icon:'💬'});
+    document.getElementById('contactCategories').innerHTML=sections.length?sections.map(function(s){
+      return '<div class="contact-category"><div class="contact-category-header"><div class="contact-category-icon '+s.type+'">'+s.icon+'</div><span>'+s.label+'</span></div><div class="contact-category-value">'+s.value+'</div></div>';
+    }).join(''):'<div style="text-align:center;color:#64748b;padding:24px 0;">暂无联系方式</div>';
+    var extra=document.getElementById('contactExtra');
+    if(c.extra){
+      extra.style.display='block';
+      extra.textContent=c.extra;
+    }else{extra.style.display='none';}
+  }catch(e){console.warn('openContactModal:',e);}
+  overlay.classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeContactModal(){
+  var overlay=document.getElementById('contactModal');
+  if(overlay)overlay.classList.remove('show');
+  document.body.style.overflow='';
+}
+
+// Click outside to close
+document.getElementById('bioModal').addEventListener('click',function(e){if(e.target===this)closeBioModal();});
+document.getElementById('contactModal').addEventListener('click',function(e){if(e.target===this)closeContactModal();});
 </script>
 </body>
 </html>
