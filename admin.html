@@ -494,6 +494,57 @@
   }
   .btn-danger:hover{background:#ef4444;}
 
+  /* ===== EDIT MODAL ===== */
+  .edit-overlay{
+    display:none;position:fixed;inset:0;z-index:400;
+    background:rgba(0,0,0,0.75);
+    align-items:center;justify-content:center;
+    backdrop-filter:blur(6px);
+  }
+  .edit-overlay.show{display:flex;}
+  .edit-box{
+    background:var(--bg-card);
+    border:1px solid rgba(124,58,237,0.3);
+    border-radius:20px;padding:28px 28px 24px;
+    width:520px;max-width:92vw;max-height:90vh;overflow-y:auto;
+    box-shadow:0 0 60px rgba(124,58,237,0.2);
+  }
+  .edit-box-title{
+    font-size:1rem;font-weight:600;margin-bottom:20px;
+    display:flex;align-items:center;gap:10px;
+    border-bottom:1px solid var(--border);padding-bottom:14px;
+  }
+  .edit-images-preview{
+    display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;
+  }
+  .edit-img-item{
+    position:relative;width:72px;height:72px;
+    border-radius:8px;overflow:hidden;
+    border:1px solid var(--border);
+  }
+  .edit-img-item img{width:100%;height:100%;object-fit:cover;}
+  .edit-img-item .remove-btn{
+    position:absolute;top:2px;right:2px;
+    width:18px;height:18px;border-radius:50%;
+    background:rgba(239,68,68,0.9);color:#fff;
+    border:none;cursor:pointer;font-size:0.6rem;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .2s;z-index:2;
+  }
+  .edit-img-item:hover .remove-btn{opacity:1;}
+  .edit-add-img{
+    width:72px;height:72px;border-radius:8px;
+    border:1.5px dashed rgba(124,58,237,0.35);
+    background:rgba(124,58,237,0.04);
+    cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:4px;
+    color:var(--text-secondary);font-size:0.72rem;
+    transition:all .2s;
+  }
+  .edit-add-img:hover{border-color:rgba(124,58,237,0.6);background:rgba(124,58,237,0.08);color:var(--accent);}
+  .edit-add-img-icon{font-size:1.4rem;}
+  .edit-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+
   @media(max-width:900px){
     .sidebar{width:200px;}
     .form-grid{grid-template-columns:1fr;}
@@ -954,6 +1005,23 @@
     <div class="confirm-actions">
       <button class="btn-cancel" onclick="closeConfirm()">取消</button>
       <button class="btn-danger" id="confirmOk">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="edit-overlay" id="editOverlay">
+  <div class="edit-box">
+    <div class="edit-box-title">
+      <span id="editModalIcon">✏️</span>
+      <span id="editModalTitle">编辑作品</span>
+    </div>
+    <div class="form-grid" id="editFormFields">
+      <!-- Dynamic fields injected by JS -->
+    </div>
+    <div class="edit-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+      <button class="btn-submit" onclick="saveEdit()">保存修改</button>
     </div>
   </div>
 </div>
@@ -1419,6 +1487,7 @@ function renderList(type,data){
       </td>
       <td>
         <div class="action-btns">
+          <button class="btn-icon edit" onclick="openEditModal('${type}','${item.id}')" title="编辑">✏️</button>
           <button class="btn-icon" onclick="confirmDelete('${type}','${item.id}')" title="删除">🗑</button>
         </div>
       </td>
@@ -1722,6 +1791,240 @@ function doLogout(){
   document.getElementById('loginOverlay').style.display='flex';
   document.getElementById('pwdInput').value='';
 }
+
+// ===== EDIT MODAL =====
+let editState = {type:null, id:null, imgs:[]};
+
+async function openEditModal(type, id){
+  const data = await getLocalData();
+  let arr;
+  if(type==='painting') arr=data.paintings;
+  else if(type==='poster') arr=data.posters;
+  else if(type==='video') arr=data.videos;
+  else if(type==='char') arr=data.chars;
+  const item = arr.find(i=>i.id===id);
+  if(!item) return;
+
+  editState.type = type;
+  editState.id = id;
+  editState.imgs = item.imgs ? [...item.imgs] : (item.img ? [item.img] : []);
+  editState.thumb = item.thumb || '';
+  editState.videoData = item.videoData || '';
+
+  const typeIcons = {painting:'🎨', poster:'🪧', video:'🎬', char:'✨'};
+  const typeNames = {painting:'AI 绘画', poster:'AI 海报', video:'AI 视频', char:'超级字符'};
+  document.getElementById('editModalIcon').textContent = typeIcons[type];
+  document.getElementById('editModalTitle').textContent = '编辑' + typeNames[type] + ' — ' + (item.title||'无标题');
+
+  let fields = '';
+
+  // Common: title
+  fields += `
+    <div class="form-group full">
+      <label class="form-label">作品标题 *</label>
+      <input class="form-input" id="edit-title" value="${escAttr(item.title||'')}">
+    </div>`;
+
+  // Tool field (not for char)
+  if(type !== 'char'){
+    const toolLabel = type==='video' ? '生成工具' : type==='poster' ? '设计工具' : 'AI 模型 / 工具';
+    fields += `
+    <div class="form-group full">
+      <label class="form-label">${toolLabel}</label>
+      <input class="form-input" id="edit-tool" value="${escAttr(item.tool||'')}">
+    </div>`;
+  }
+
+  // Char: char field
+  if(type === 'char'){
+    fields += `
+    <div class="form-group full">
+      <label class="form-label">显示字符 *</label>
+      <input class="form-input" id="edit-char" value="${escAttr(item.char||'')}" maxlength="4">
+    </div>`;
+  }
+
+  // Desc
+  fields += `
+    <div class="form-group full">
+      <label class="form-label">作品描述</label>
+      <textarea class="form-textarea" id="edit-desc">${escHtmlFull(item.desc||'')}</textarea>
+    </div>`;
+
+  // Images (painting, poster, char)
+  if(type !== 'video'){
+    fields += `
+    <div class="form-group full">
+      <label class="form-label">作品图片</label>
+      <div class="edit-images-preview" id="editImgPreview"></div>
+      <input type="file" id="edit-img-input" class="upload-hidden" accept="image/*" multiple onchange="editAddImages(this)">
+    </div>`;
+  }
+
+  // Video: url / thumb
+  if(type === 'video'){
+    const hasLocal = !!item.videoData;
+    const videoSrcHint = hasLocal
+      ? '<span style="color:#a78bfa;font-size:0.78rem;">当前：本地视频文件（如需替换请重新上传）</span>'
+      : `<input class="form-input" id="edit-url" value="${escAttr(item.url||'')}" placeholder="https://... 视频链接" style="margin-top:4px;">`;
+    fields += `
+    <div class="form-group full">
+      <label class="form-label">视频来源</label>
+      ${videoSrcHint}
+    </div>
+    <div class="form-group full">
+      <label class="form-label">封面图片</label>
+      <div class="edit-images-preview" id="editThumbPreview"></div>
+      <input type="file" id="edit-thumb-input" class="upload-hidden" accept="image/*" onchange="editAddThumb(this)">
+    </div>`;
+  }
+
+  document.getElementById('editFormFields').innerHTML = fields;
+
+  // Render existing images
+  if(type !== 'video'){
+    renderEditImgPreview();
+  } else {
+    renderEditThumbPreview();
+  }
+
+  document.getElementById('editOverlay').classList.add('show');
+}
+
+function escAttr(s){
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escHtmlFull(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderEditImgPreview(){
+  const container = document.getElementById('editImgPreview');
+  if(!container) return;
+  let html = editState.imgs.map((src,i)=>`
+    <div class="edit-img-item">
+      <img src="${src}" alt="图片 ${i+1}">
+      <button class="remove-btn" onclick="editRemoveImg(${i})">✕</button>
+    </div>
+  `).join('');
+  html += `<div class="edit-add-img" onclick="document.getElementById('edit-img-input').click()">
+    <span class="edit-add-img-icon">+</span>
+    <span>添加图片</span>
+  </div>`;
+  container.innerHTML = html;
+}
+
+function renderEditThumbPreview(){
+  const container = document.getElementById('editThumbPreview');
+  if(!container) return;
+  let html = '';
+  if(editState.thumb){
+    html += `<div class="edit-img-item">
+      <img src="${editState.thumb}" alt="封面">
+      <button class="remove-btn" onclick="editRemoveThumb()">✕</button>
+    </div>`;
+  }
+  html += `<div class="edit-add-img" onclick="document.getElementById('edit-thumb-input').click()">
+    <span class="edit-add-img-icon">${editState.thumb ? '↩' : '+'}</span>
+    <span>${editState.thumb ? '替换封面' : '添加封面'}</span>
+  </div>`;
+  container.innerHTML = html;
+}
+
+function editRemoveImg(index){
+  editState.imgs.splice(index, 1);
+  renderEditImgPreview();
+}
+
+function editRemoveThumb(){
+  editState.thumb = '';
+  renderEditThumbPreview();
+}
+
+async function editAddImages(input){
+  const files = Array.from(input.files);
+  if(!files.length) return;
+  for(const file of files){
+    const reader = new FileReader();
+    const dataUrl = await new Promise(r=>{reader.onload=e=>r(e.target.result);reader.readAsDataURL(file);});
+    const compressed = await compressImage(dataUrl);
+    editState.imgs.push(compressed);
+  }
+  renderEditImgPreview();
+  input.value = '';
+}
+
+async function editAddThumb(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  const dataUrl = await new Promise(r=>{reader.onload=e=>r(e.target.result);reader.readAsDataURL(file);});
+  const compressed = await compressImage(dataUrl, 1600);
+  editState.thumb = compressed;
+  renderEditThumbPreview();
+  input.value = '';
+}
+
+async function saveEdit(){
+  const {type, id} = editState;
+  if(!type || !id) return;
+
+  const title = document.getElementById('edit-title').value.trim();
+  if(!title){showToast('请填写作品标题','error');return;}
+
+  try{
+    const data = await getLocalData();
+    let arr;
+    if(type==='painting') arr=data.paintings;
+    else if(type==='poster') arr=data.posters;
+    else if(type==='video') arr=data.videos;
+    else if(type==='char') arr=data.chars;
+
+    const item = arr.find(i=>i.id===id);
+    if(!item){showToast('作品不存在','error');return;}
+
+    item.title = title;
+    item.desc = document.getElementById('edit-desc').value.trim();
+
+    if(type !== 'char'){
+      item.tool = document.getElementById('edit-tool').value.trim();
+    }
+    if(type === 'char'){
+      const char = document.getElementById('edit-char').value.trim();
+      if(!char){showToast('请填写显示字符','error');return;}
+      item.char = char;
+    }
+    if(type !== 'video'){
+      item.imgs = [...editState.imgs];
+      item.img = item.imgs[0] || '';
+    } else {
+      // Only update URL if not local video
+      if(!item.videoData){
+        const urlEl = document.getElementById('edit-url');
+        if(urlEl) item.url = urlEl.value.trim();
+      }
+      item.thumb = editState.thumb;
+    }
+
+    await saveData(data);
+    await refreshAll(data);
+    closeEditModal();
+    showToast('作品信息已更新 ✓');
+  }catch(e){
+    console.error('[AIGC] saveEdit error:',e);
+    showToast('保存失败：'+e.message,'error');
+  }
+}
+
+function closeEditModal(){
+  document.getElementById('editOverlay').classList.remove('show');
+  editState = {type:null, id:null, imgs:[], thumb:'', videoData:''};
+}
+
+// Close edit modal on overlay click
+document.getElementById('editOverlay').addEventListener('click', function(e){
+  if(e.target === this) closeEditModal();
+});
 </script>
 </body>
 </html>
