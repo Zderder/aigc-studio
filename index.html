@@ -37,43 +37,10 @@
   }
   .bg-overlay{
     position:fixed;top:0;left:0;width:100%;height:100%;
-    background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(124,58,237,0.18) 0%,transparent 70%),
-               radial-gradient(ellipse 60% 40% at 80% 80%,rgba(6,182,212,0.12) 0%,transparent 60%),
-               radial-gradient(ellipse 50% 50% at 20% 60%,rgba(245,158,11,0.08) 0%,transparent 60%);
+    background:radial-gradient(ellipse 70% 50% at 50% 55%,rgba(124,58,237,0.06) 0%,transparent 70%),
+               radial-gradient(ellipse 50% 30% at 30% 85%,rgba(6,182,212,0.05) 0%,transparent 60%),
+               radial-gradient(ellipse 40% 35% at 70% 75%,rgba(245,158,11,0.04) 0%,transparent 60%);
     z-index:0;pointer-events:none;
-  }
-
-  /* ===== SCROLLING GRID LINES ===== */
-  .grid-lines{
-    position:fixed;top:0;left:0;width:100%;height:100%;
-    background-image:
-      linear-gradient(rgba(124,58,237,0.06) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(124,58,237,0.06) 1px,transparent 1px);
-    background-size:60px 60px;
-    animation:gridScroll 20s linear infinite;
-    z-index:0;pointer-events:none;
-  }
-  @keyframes gridScroll{
-    0%{background-position:0 0;}
-    100%{background-position:60px 60px;}
-  }
-
-  /* ===== FLOATING PARTICLES ===== */
-  .particles-container{
-    position:fixed;top:0;left:0;width:100%;height:100%;
-    z-index:0;pointer-events:none;overflow:hidden;
-  }
-  .particle{
-    position:absolute;
-    border-radius:50%;
-    animation:floatUp linear infinite;
-    opacity:0;
-  }
-  @keyframes floatUp{
-    0%{transform:translateY(100vh) scale(0);opacity:0;}
-    10%{opacity:1;}
-    90%{opacity:0.6;}
-    100%{transform:translateY(-100px) scale(1);opacity:0;}
   }
 
   /* ===== LAYOUT ===== */
@@ -504,9 +471,6 @@
 <!-- BACKGROUND -->
 <canvas id="neural-canvas"></canvas>
 <div class="bg-overlay"></div>
-<div class="grid-lines"></div>
-<div class="particles-container" id="particles"></div>
-
 <!-- NAV -->
 <nav>
   <div class="nav-logo">
@@ -679,84 +643,313 @@
 <script src="db.js"></script>
 
 <script>
-// ===== NEURAL CANVAS =====
+// ===== NEURAL CANVAS — AI × Art =====
 (function(){
+  try{
   const canvas=document.getElementById('neural-canvas');
+  if(!canvas)return;
   const ctx=canvas.getContext('2d');
-  let W,H,nodes=[];
-  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
-  resize();window.addEventListener('resize',()=>{resize();initNodes();});
+  let W,H,time=0;
+  let mx=window.innerWidth/2,my=window.innerHeight/2;
+  let smx=mx,smy=my;
+  let pmx=mx,pmy=my; // previous mouse pos for velocity
+  let mSpeed=0;
 
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+
+  // Mouse tracking + velocity
+  window.addEventListener('mousemove',function(e){
+    pmx=mx;pmy=my;
+    mx=e.clientX;my=e.clientY;
+  });
+
+  // ===== NEURAL NODES (AI neurons) =====
+  var nodes=[];
   function initNodes(){
-    const count=Math.floor(W*H/18000);
     nodes=[];
-    for(let i=0;i<count;i++){
+    var count=28;
+    for(var i=0;i<count;i++){
       nodes.push({
-        x:Math.random()*W,y:Math.random()*H,
-        vx:(Math.random()-.5)*0.4,vy:(Math.random()-.5)*0.4,
-        r:Math.random()*2+1,
-        color:['#7c3aed','#06b6d4','#f59e0b','#ec4899'][Math.floor(Math.random()*4)]
+        x:W*0.1+Math.random()*W*0.8,
+        y:H*0.1+Math.random()*H*0.8,
+        r:1.5+Math.random()*3.5,
+        pulse:Math.random()*Math.PI*2,
+        ps:0.006+Math.random()*0.018,
+        connections:[]
+      });
+    }
+    // Each node connects to 2-3 nearest neighbors
+    for(var i=0;i<nodes.length;i++){
+      var dists=[];
+      for(var j=0;j<nodes.length;j++){
+        if(i===j)continue;
+        var dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y;
+        dists.push({idx:j,dist:dx*dx+dy*dy});
+      }
+      dists.sort(function(a,b){return a.dist-b.dist;});
+      var cc=2+(i%3);
+      nodes[i].connections=dists.slice(0,cc).map(function(d){return d.idx;});
+    }
+  }
+
+  // ===== MORPHING GEOMETRY (AI-generated art) — with magnetic cursor =====
+  var morphShapes=[];
+  function initShapes(){
+    morphShapes=[];
+    for(var i=0;i<120;i++){
+      var sx=Math.random()*W,sy=Math.random()*H;
+      morphShapes.push({
+        ox:sx,oy:sy,
+        x:sx,y:sy,
+        vx:(Math.random()-0.5)*0.35,
+        vy:(Math.random()-0.5)*0.35,
+        baseSides:3+Math.floor(Math.random()*5),
+        targetSides:3+Math.floor(Math.random()*5),
+        radius:10+Math.random()*24,
+        rotation:Math.random()*Math.PI*2,
+        rotSpeed:(Math.random()-0.5)*0.005,
+        morphT:Math.random(),
+        morphSpeed:0.002+Math.random()*0.007,
+        color:['124,58,237','6,182,212','245,158,11','236,72,153'][Math.floor(Math.random()*4)],
+        alpha:1.0
       });
     }
   }
-  initNodes();
 
-  const DIST=120;
+  // ===== AMBIENT PARTICLES =====
+  var particles=[];
+  function initParticles(){
+    particles=[];
+    for(var i=0;i<18;i++){
+      particles.push({
+        x:Math.random()*W,
+        y:Math.random()*H,
+        vx:(Math.random()-0.5)*0.12,
+        vy:(Math.random()-0.5)*0.12-0.04,
+        r:0.3+Math.random()*1.0,
+        pulse:Math.random()*Math.PI*2,
+        ps:0.008+Math.random()*0.022,
+        color:['#7c3aed','#06b6d4','#f59e0b','#ec4899','#a78bfa'][Math.floor(Math.random()*5)]
+      });
+    }
+  }
+
+  // Init all
+  resize();initNodes();initShapes();initParticles();
+  window.addEventListener('resize',function(){
+    resize();initNodes();initShapes();initParticles();
+  });
+
+  function drawPoly(ctx,cx,cy,sides,r,rot){
+    ctx.beginPath();
+    for(var i=0;i<sides;i++){
+      var a=rot+(i/sides)*Math.PI*2-Math.PI/2;
+      var px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+  }
+
   function draw(){
-    ctx.clearRect(0,0,W,H);
-    for(let i=0;i<nodes.length;i++){
-      const n=nodes[i];
-      n.x+=n.vx;n.y+=n.vy;
-      if(n.x<0||n.x>W)n.vx*=-1;
-      if(n.y<0||n.y>H)n.vy*=-1;
-      // dot
+    time+=0.016;
+    smx+=(mx-smx)*0.025;
+    smy+=(my-smy)*0.025;
+    // Mouse speed (pixels/frame) with decay
+    var rawSpeed=Math.sqrt((mx-pmx)*(mx-pmx)+(my-pmy)*(my-pmy));
+    mSpeed=mSpeed*0.85+rawSpeed*0.15;
+    pmx=mx;pmy=my;
+
+    // Dark clear with slight persistence for trail effect
+    ctx.fillStyle='rgba(3,6,16,0.28)';
+    ctx.fillRect(0,0,W,H);
+
+    // ===== NEURAL CONNECTIONS (synapses) =====
+    for(var ni=0;ni<nodes.length;ni++){
+      var nd=nodes[ni];
+      for(var ci=0;ci<nd.connections.length;ci++){
+        var tg=nodes[nd.connections[ci]];
+        if(!tg||nd.connections[ci]<=ni)continue; // draw each pair once
+        var mx2=(nd.x+tg.x)/2,my2=(nd.y+tg.y)/2;
+        var dx=smx-mx2,dy=smy-my2;
+        var mdist=Math.sqrt(dx*dx+dy*dy);
+        var alpha=0.04;
+        if(mdist<200)alpha+=0.1*(1-mdist/200);
+        ctx.strokeStyle='rgba(124,58,237,'+alpha.toFixed(3)+')';
+        ctx.lineWidth=0.5;
+        ctx.beginPath();ctx.moveTo(nd.x,nd.y);ctx.lineTo(tg.x,tg.y);ctx.stroke();
+      }
+    }
+
+    // ===== NEURAL NODES =====
+    for(var nni=0;nni<nodes.length;nni++){
+      var nn=nodes[nni];
+      nn.pulse+=nn.ps;
+      var glow=0.4+0.6*Math.sin(nn.pulse);
+      var dxm=smx-nn.x,dym=smy-nn.y;
+      var dm=Math.sqrt(dxm*dxm+dym*dym);
+      var boost=dm<140?(1-dm/140)*0.55:0;
+
+      // Outer halo
+      var halo=ctx.createRadialGradient(nn.x,nn.y,0,nn.x,nn.y,nn.r*9);
+      halo.addColorStop(0,'rgba(124,58,237,'+(glow*0.18+boost*0.7).toFixed(2)+')');
+      halo.addColorStop(0.5,'rgba(6,182,212,'+(glow*0.06+boost*0.2).toFixed(2)+')');
+      halo.addColorStop(1,'transparent');
+      ctx.fillStyle=halo;
+      ctx.fillRect(nn.x-nn.r*9,nn.y-nn.r*9,nn.r*18,nn.r*18);
+
+      // Core dot
       ctx.beginPath();
-      ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
-      ctx.fillStyle=n.color+'88';
+      ctx.arc(nn.x,nn.y,nn.r*(0.65+boost),0,Math.PI*2);
+      ctx.fillStyle='rgba(210,220,255,'+(glow*0.65+boost*0.5).toFixed(2)+')';
       ctx.fill();
-      // lines
-      for(let j=i+1;j<nodes.length;j++){
-        const m=nodes[j];
-        const dx=m.x-n.x,dy=m.y-n.y;
-        const d=Math.sqrt(dx*dx+dy*dy);
-        if(d<DIST){
-          ctx.beginPath();
-          ctx.moveTo(n.x,n.y);ctx.lineTo(m.x,m.y);
-          ctx.strokeStyle=`rgba(124,58,237,${0.15*(1-d/DIST)})`;
-          ctx.lineWidth=0.5;ctx.stroke();
+    }
+
+    // ===== GEOMETRY MESH — inter-shape connections =====
+    for(var gi=0;gi<morphShapes.length;gi++){
+      var ga=morphShapes[gi];
+      for(var gj=gi+1;gj<morphShapes.length;gj++){
+        var gb=morphShapes[gj];
+        var gdx=ga.x-gb.x,gdy=ga.y-gb.y;
+        var gd=gdx*gdx+gdy*gdy;
+        var gMax=200*200;
+        if(gd<gMax){
+          var ga2=Math.sqrt(gd);
+          var glAlpha=(1-ga2/200)*0.55;
+          ctx.strokeStyle='rgba(124,58,237,'+glAlpha.toFixed(3)+')';
+          ctx.lineWidth=0.8;
+          ctx.beginPath();ctx.moveTo(ga.x,ga.y);ctx.lineTo(gb.x,gb.y);ctx.stroke();
         }
       }
     }
+
+    // ===== MORPHING GEOMETRY (magnetic cursor attraction) =====
+    for(var mi=0;mi<morphShapes.length;mi++){
+      var ms=morphShapes[mi];
+      // Magnetic pull — detaches at high mouse speed
+      var dxm2=mx-ms.x,dym2=my-ms.y;
+      var dm2=Math.sqrt(dxm2*dxm2+dym2*dym2);
+      var magRange=240;
+      // Speed threshold: magnetic force linearly decreases with speed, zero at 600px/frame
+      var speedFactor=Math.max(0,1-mSpeed/600);
+      var isPulled=false;
+      if(dm2<magRange&&dm2>1&&speedFactor>0){
+        var force=(1-dm2/magRange);
+        force=force*force*speedFactor;
+        var pullX=dxm2/dm2*force*6;
+        var pullY=dym2/dm2*force*6-force*0.8;
+        ms.x+=pullX;ms.y+=pullY;
+        isPulled=true;
+      }
+      // Free slow drift
+      ms.x+=ms.vx;ms.y+=ms.vy;
+      // Repulsion from nearby shapes — fast spread when not pulled
+      if(!isPulled){
+        for(var rj=0;rj<morphShapes.length;rj++){
+          if(rj===mi)continue;
+          var mr=morphShapes[rj];
+          var rdx=ms.x-mr.x,rdy=ms.y-mr.y;
+          var rd=rdx*rdx+rdy*rdy;
+          var repelRange=160;
+          if(rd<repelRange*repelRange&&rd>1){
+            var rd2=Math.sqrt(rd);
+            var rForce=(1-rd2/repelRange);
+            rForce=rForce*rForce*1.2;
+            ms.x+=rdx/rd2*rForce;
+            ms.y+=rdy/rd2*rForce;
+          }
+        }
+      }
+      ms.rotation+=ms.rotSpeed;
+      ms.morphT+=ms.morphSpeed;
+      // Wrap
+      if(ms.x<-120)ms.x=W+120;if(ms.x>W+120)ms.x=-120;
+      if(ms.y<-120)ms.y=H+120;if(ms.y>H+120)ms.y=-120;
+      if(ms.morphT>=1){
+        ms.morphT=0;ms.baseSides=ms.targetSides;
+        ms.targetSides=3+Math.floor(Math.random()*5);
+        ms.radius=10+Math.random()*24;
+      }
+      var t2=ms.morphT<0.5?2*ms.morphT*ms.morphT:1-Math.pow(-2*ms.morphT+2,2)/2;
+      var curSides=ms.baseSides+(ms.targetSides-ms.baseSides)*t2;
+      // Recalc distance for brightness
+      var dxmb=mx-ms.x,dymb=my-ms.y;
+      var dmb=Math.sqrt(dxmb*dxmb+dymb*dymb);
+      var pb=isPulled?(1-dmb/magRange)*speedFactor*0.9:0;
+      var a=Math.min(1,ms.alpha+pb*0.15);
+      // Neon outer bloom — very wide soft glow
+      ctx.strokeStyle='rgba('+ms.color+','+(a*0.18).toFixed(3)+')';
+      ctx.lineWidth=ms.radius*0.7+pb*16;
+      drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius,ms.rotation);
+      // Neon halo — medium wide
+      ctx.strokeStyle='rgba('+ms.color+','+(a*0.5).toFixed(2)+')';
+      ctx.lineWidth=ms.radius*0.44+pb*11;
+      drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius,ms.rotation);
+      // Neon tube core — fluorescent line with shadowBlur
+      ctx.shadowColor='rgb('+ms.color+')';
+      ctx.shadowBlur=10+pb*12;
+      ctx.strokeStyle='rgba(255,255,255,1.0)';
+      ctx.lineWidth=2.8+pb*4;
+      drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius,ms.rotation);
+      // Reset shadow for inner detail
+      ctx.shadowBlur=0;
+      // Inner white-hot wire
+      ctx.strokeStyle='rgba(255,255,255,'+(a*0.8+pb*0.2).toFixed(2)+')';
+      ctx.lineWidth=1.3+pb*2;
+      drawPoly(ctx,ms.x,ms.y,Math.round(curSides),ms.radius*0.55,ms.rotation+Math.PI/curSides);
+    }
+
+    // ===== AMBIENT PARTICLES =====
+    for(var api=0;api<particles.length;api++){
+      var ap=particles[api];
+      ap.x+=ap.vx;ap.y+=ap.vy;ap.pulse+=ap.ps;
+      if(ap.x<-30)ap.x=W+30;if(ap.x>W+30)ap.x=-30;
+      if(ap.y<-30)ap.y=H+30;if(ap.y>H+30)ap.y=-30;
+      var ag=0.3+0.7*Math.sin(ap.pulse);
+      ctx.beginPath();
+      ctx.arc(ap.x,ap.y,ap.r,0,Math.PI*2);
+      ctx.fillStyle=ap.color+Math.floor(ag*14).toString(16).padStart(2,'0');
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ap.x,ap.y,ap.r*1.5,0,Math.PI*2);
+      ctx.fillStyle=ap.color+Math.floor(ag*2).toString(16).padStart(2,'0');
+      ctx.fill();
+    }
+
+    // ===== VIGNETTE =====
+    var vig=ctx.createRadialGradient(W/2,H*0.5,W*0.38,W/2,H*0.5,W*0.82);
+    vig.addColorStop(0,'transparent');
+    vig.addColorStop(0.65,'rgba(3,6,16,0.3)');
+    vig.addColorStop(1,'rgba(3,6,16,0.72)');
+    ctx.fillStyle=vig;
+    ctx.fillRect(0,0,W,H);
+
     requestAnimationFrame(draw);
   }
   draw();
-})();
 
-// ===== PARTICLES =====
-(function(){
-  const cont=document.getElementById('particles');
-  const colors=['#7c3aed','#06b6d4','#f59e0b','#ec4899','#8b5cf6'];
-  for(let i=0;i<30;i++){
-    const p=document.createElement('div');
-    p.className='particle';
-    const size=Math.random()*4+1;
-    p.style.cssText=`
-      left:${Math.random()*100}%;
-      width:${size}px;height:${size}px;
-      background:${colors[Math.floor(Math.random()*colors.length)]};
-      animation-duration:${Math.random()*15+10}s;
-      animation-delay:${Math.random()*15}s;
-    `;
-    cont.appendChild(p);
+  }catch(e){
+    console.warn('[BG] Canvas fallback — using static gradient');
+    document.body.style.background='linear-gradient(180deg,#030610 0%,#0a0f25 40%,#040812 100%)';
+    var c=document.getElementById('neural-canvas');
+    if(c)c.style.display='none';
   }
 })();
 
 // ===== LOADER =====
 window.addEventListener('load',()=>{
   setTimeout(()=>{
-    document.getElementById('pageLoader').classList.add('hidden');
+    var loader=document.getElementById('pageLoader');
+    if(loader)loader.classList.add('hidden');
   },1800);
 });
+// Safety net: hide loader after 5s no matter what
+setTimeout(function(){
+  var loader=document.getElementById('pageLoader');
+  if(loader&&!loader.classList.contains('hidden'))loader.classList.add('hidden');
+},5000);
 
 // ===== DATA STORE (IndexedDB via db.js) =====
 // getData() and saveData() are provided by db.js
@@ -976,7 +1169,12 @@ function goDetail(id,type){
 })();
 
 // ===== INIT =====
-renderAll();
+try{renderAll();}catch(e){
+  console.error('[AIGC] Init failed:',e);
+  // Ensure loader hides even on error
+  var loader=document.getElementById('pageLoader');
+  if(loader)loader.classList.add('hidden');
+}
 
 // listen for data changes from admin page (via localStorage notification from db.js)
 window.addEventListener('storage',function(e){
