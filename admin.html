@@ -430,6 +430,29 @@
   }
   .btn-icon:hover{border-color:var(--danger);color:var(--danger);background:rgba(239,68,68,0.08);}
   .btn-icon.edit:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,58,237,0.08);}
+  .btn-icon.sort-up:hover,.btn-icon.sort-down:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(6,182,212,0.08);}
+
+  /* ===== DRAG SORT ===== */
+  .drag-handle{
+    cursor:grab;color:var(--text-secondary);
+    font-size:1.1rem;padding:0 6px;user-select:none;
+    transition:color .2s;display:inline-flex;align-items:center;
+    letter-spacing:-2px;line-height:1;
+  }
+  .drag-handle:active{cursor:grabbing;color:var(--accent);}
+  .works-table tr[draggable="true"]{cursor:default;transition:background .15s;}
+  .works-table tr.drag-over td{background:rgba(124,58,237,0.12)!important;box-shadow:inset 0 2px 0 rgba(124,58,237,0.4),inset 0 -2px 0 rgba(124,58,237,0.4);}
+  .works-table tr.dragging{opacity:0.35;background:rgba(124,58,237,0.04);}
+  .sort-btns{display:inline-flex;flex-direction:column;gap:1px;margin-left:4px;}
+  .sort-btn{
+    width:16px;height:14px;border-radius:3px;
+    border:1px solid var(--border);background:transparent;
+    color:var(--text-secondary);cursor:pointer;font-size:0.55rem;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .15s;padding:0;line-height:1;
+  }
+  .sort-btn:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(6,182,212,0.08);}
+  .sort-btn:disabled{opacity:0.25;cursor:not-allowed;pointer-events:none;}
 
   /* ===== EMPTY TABLE ===== */
   .table-empty{
@@ -1394,6 +1417,103 @@ async function toggleVisible(type,id){
   }catch(e){console.error('[AIGC] toggleVisible error:',e);showToast('操作出错','error');}
 }
 
+// ===== DRAG & DROP SORTING =====
+function handleDragStart(e){
+  const tr=e.target.closest('tr');
+  if(!tr) return;
+  const type=tr.dataset.type;
+  const id=tr.dataset.id;
+  const idx=parseInt(tr.dataset.idx);
+  dragState={type,srcIndex:idx,srcId:id};
+  tr.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',id);
+  // Set ghost image to a small transparent element for cleaner look
+  const ghost=document.createElement('div');
+  ghost.style.width='1px';ghost.style.height='1px';
+  document.body.appendChild(ghost);
+  e.dataTransfer.setDragImage(ghost,0,0);
+  setTimeout(()=>document.body.removeChild(ghost),0);
+}
+
+function handleDragEnd(e){
+  const tr=e.target.closest('tr');
+  if(tr) tr.classList.remove('dragging');
+  // Remove all drag-over highlights
+  document.querySelectorAll('.works-table tr.drag-over').forEach(r=>r.classList.remove('drag-over'));
+  dragState={type:null,srcIndex:-1,srcId:null};
+}
+
+function handleDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  const tr=e.target.closest('tr');
+  if(!tr||!dragState.type) return;
+  const type=tr.dataset.type;
+  if(type!==dragState.type) return;
+  // Remove previous highlights within same table body
+  const tbody=tr.parentElement;
+  tbody.querySelectorAll('tr.drag-over').forEach(r=>{if(r!==tr) r.classList.remove('drag-over');});
+  tr.classList.add('drag-over');
+}
+
+function handleDragLeave(e){
+  const tr=e.target.closest('tr');
+  if(tr) tr.classList.remove('drag-over');
+}
+
+async function handleDrop(e){
+  e.preventDefault();
+  const tr=e.target.closest('tr');
+  if(!tr) return;
+  tr.classList.remove('drag-over');
+  const type=tr.dataset.type;
+  const dstId=tr.dataset.id;
+  if(!dragState.type||type!==dragState.type||dragState.srcId===dstId) return;
+
+  const data=await getLocalData();
+  let arr;
+  if(type==='painting') arr=data.paintings;
+  else if(type==='poster') arr=data.posters;
+  else if(type==='video') arr=data.videos;
+  else if(type==='char') arr=data.chars;
+
+  const srcIdx=arr.findIndex(i=>i.id===dragState.srcId);
+  const dstIdx=arr.findIndex(i=>i.id===dstId);
+  if(srcIdx===-1||dstIdx===-1) return;
+
+  // Reorder: remove from srcIdx, insert at dstIdx
+  const [moved]=arr.splice(srcIdx,1);
+  arr.splice(dstIdx,0,moved);
+
+  await saveData(data);
+  await refreshAll(data);
+  dragState={type:null,srcIndex:-1,srcId:null};
+}
+
+// ===== BUTTON-BASED SORTING =====
+async function moveWork(type,id,direction){
+  const data=await getLocalData();
+  let arr;
+  if(type==='painting') arr=data.paintings;
+  else if(type==='poster') arr=data.posters;
+  else if(type==='video') arr=data.videos;
+  else if(type==='char') arr=data.chars;
+
+  const idx=arr.findIndex(i=>i.id===id);
+  if(idx===-1) return;
+  const newIdx=direction==='up'?idx-1:idx+1;
+  if(newIdx<0||newIdx>=arr.length) return;
+
+  // Swap
+  const tmp=arr[idx];
+  arr[idx]=arr[newIdx];
+  arr[newIdx]=tmp;
+
+  await saveData(data);
+  await refreshAll(data);
+}
+
 // ===== DELETE =====
 let pendingDelete={type:null,id:null};
 function confirmDelete(type,id){
@@ -1430,6 +1550,9 @@ async function filterWorks(type,filter,el){
   renderList(type,data);
 }
 
+// ===== DRAG SORT STATE =====
+let dragState={type:null,srcIndex:-1,srcId:null};
+
 // ===== RENDER LISTS =====
 function renderList(type,data){
   const filter=filterState[type];
@@ -1453,7 +1576,9 @@ function renderList(type,data){
   const typeLabels={painting:'AI绘画',poster:'AI海报',video:'AI视频',char:'超级字符'};
   const typeBadges={painting:'badge-painting',poster:'badge-poster',video:'badge-video',char:'badge-char'};
 
-  const rows=items.map(item=>{
+  const rows=items.map((item,idx)=>{
+    const isFirst=idx===0;
+    const isLast=idx===items.length-1;
     let thumbHtml;
     if(type==='video'){
       if(item.videoData){
@@ -1471,7 +1596,13 @@ function renderList(type,data){
     const charDisp=type==='char'?`<span style="font-size:1.2rem;margin-right:8px;">${item.char||''}</span>`:'';
     const videoSourceBadge=type==='video'?(item.videoData?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(236,72,153,0.12);color:#f9a8d4;margin-left:4px;">本地</span>`:(item.url?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,0.1);color:#67e8f9;margin-left:4px;">链接</span>`:'')):'';
     const imgCountBadge=(type!=='video'&&item.imgs&&item.imgs.length>1)?`<span style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:rgba(124,58,237,0.12);color:#a78bfa;margin-left:4px;">${item.imgs.length}张</span>`:'';
-    return `<tr>
+    return `<tr draggable="true" data-type="${type}" data-id="${item.id}" data-idx="${idx}"
+      ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)"
+      ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+      ondrop="handleDrop(event)">
+      <td style="width:32px;text-align:center;padding:12px 4px;">
+        <span class="drag-handle" title="拖拽排序">⋮⋮</span>
+      </td>
       <td>${thumbHtml}</td>
       <td>${charDisp}<span style="font-weight:500">${item.title||'无标题'}</span>${videoSourceBadge}${imgCountBadge}</td>
       <td><span class="type-badge ${typeBadges[type]}">${typeLabels[type]}</span></td>
@@ -1489,6 +1620,10 @@ function renderList(type,data){
         <div class="action-btns">
           <button class="btn-icon edit" onclick="openEditModal('${type}','${item.id}')" title="编辑">✏️</button>
           <button class="btn-icon" onclick="confirmDelete('${type}','${item.id}')" title="删除">🗑</button>
+          <div class="sort-btns">
+            <button class="sort-btn" onclick="moveWork('${type}','${item.id}','up')" title="上移" ${isFirst?'disabled':''}>▲</button>
+            <button class="sort-btn" onclick="moveWork('${type}','${item.id}','down')" title="下移" ${isLast?'disabled':''}>▼</button>
+          </div>
         </div>
       </td>
     </tr>`;
@@ -1498,6 +1633,7 @@ function renderList(type,data){
     <table class="works-table">
       <thead>
         <tr>
+          <th style="width:32px;text-align:center;">序</th>
           <th>封面</th>
           <th>标题</th>
           <th>类型</th>
