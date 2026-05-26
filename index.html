@@ -152,6 +152,16 @@
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
   }
   .stat-label{font-size:0.78rem;color:var(--text-secondary);margin-top:4px;letter-spacing:0.05em;}
+  .stat-clickable{cursor:pointer;transition:transform .2s,background .2s;border-radius:8px;text-decoration:none;}
+  .stat-clickable:hover{
+    transform:translateY(-3px);
+    background:rgba(124,58,237,0.06);
+  }
+  .stat-clickable:hover .stat-num{
+    background:linear-gradient(135deg,#f59e0b,#ec4899);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .stat-clickable:hover .stat-label{color:#c4b5fd;}
 
   /* ===== SECTIONS ===== */
   section{padding:100px 5%;}
@@ -522,19 +532,19 @@
       <div class="stat-num" id="statTotal">0</div>
       <div class="stat-label">总作品数</div>
     </div>
-    <div class="stat-item">
+    <div class="stat-item stat-clickable" onclick="scrollToSection('video')">
+      <div class="stat-num" id="statVideo">0</div>
+      <div class="stat-label">视频作品</div>
+    </div>
+    <div class="stat-item stat-clickable" onclick="scrollToSection('poster')">
+      <div class="stat-num" id="statPoster">0</div>
+      <div class="stat-label">图片作品</div>
+    </div>
+    <div class="stat-item stat-clickable" onclick="scrollToSection('painting')">
       <div class="stat-num" id="statPainting">0</div>
       <div class="stat-label">IP 形象</div>
     </div>
-    <div class="stat-item">
-      <div class="stat-num" id="statPoster">0</div>
-      <div class="stat-label">AI 海报</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-num" id="statVideo">0</div>
-      <div class="stat-label">AI 视频</div>
-    </div>
-    <div class="stat-item">
+    <div class="stat-item stat-clickable" onclick="scrollToSection('superchar')">
       <div class="stat-num" id="statChar">0</div>
       <div class="stat-label">超级字符</div>
     </div>
@@ -1085,11 +1095,11 @@ function updateStats(data){
   const po=data.posters.filter(i=>i.visible).length;
   const v=data.videos.filter(i=>i.visible).length;
   const c=data.chars.filter(i=>i.visible).length;
-  document.getElementById('statTotal').textContent=p+po+v+c;
-  document.getElementById('statPainting').textContent=p;
-  document.getElementById('statPoster').textContent=po;
-  document.getElementById('statVideo').textContent=v;
-  document.getElementById('statChar').textContent=c;
+  animateCounter(document.getElementById('statTotal'),p+po+v+c);
+  animateCounter(document.getElementById('statPainting'),p);
+  animateCounter(document.getElementById('statPoster'),po);
+  animateCounter(document.getElementById('statVideo'),v);
+  animateCounter(document.getElementById('statChar'),c);
 }
 
 async function renderAll(){
@@ -1155,6 +1165,15 @@ function showCloudLoading(show) {
 function goDetail(id,type){
   sessionStorage.setItem('aigc_scroll_y', window.scrollY);
   window.location.href='detail.html?id='+encodeURIComponent(id)+'&type='+encodeURIComponent(type);
+}
+
+// ===== SMOOTH SCROLL TO SECTION =====
+function scrollToSection(sectionId){
+  var target=document.getElementById(sectionId);
+  if(!target)return;
+  var navH=64; // fixed nav height
+  var top=target.getBoundingClientRect().top+window.pageYOffset-navH-20;
+  window.scrollTo({top:top,behavior:'smooth'});
 }
 
 // ===== SCROLL RESTORE =====
