@@ -1241,11 +1241,13 @@ async function renderAll(){
     showToast('请检查网络连接','error');
     return;
   }
-  if(cloudUpdated){showToast('数据已与云端同步 ✓');}else{var t=document.getElementById('toast');t.classList.remove('show');}
+  if(cloudUpdated){showToast('数据已与云端同步 ✓');}else{var t=document.getElementById('toast');clearTimeout(_syncSafetyTimer);_syncModalOpen=false;t.classList.remove('show');}
 }
 
 // ===== SYNC TOAST =====
 let toastTimer;
+let _syncModalOpen=false;
+let _syncSafetyTimer=null;
 
 function showSyncingModal(){
   const t=document.getElementById('toast');
@@ -1253,10 +1255,23 @@ function showSyncingModal(){
   const title=document.getElementById('toastTitle');
   const msgEl=document.getElementById('toastMsg');
   clearTimeout(toastTimer);
+  clearTimeout(_syncSafetyTimer);
   t.className='toast show';
   icon.textContent='☁️';
   title.textContent='正在同步云端数据';
   msgEl.textContent='数据加载中，请稍候...';
+  _syncModalOpen=true;
+  // 安全兜底：最多 10 秒后自动隐藏，防止网络请求挂住导致浮窗不消失
+  _syncSafetyTimer=setTimeout(function(){
+    if(_syncModalOpen){
+      t.className='toast show error';
+      icon.textContent='✕';
+      title.textContent='同步超时';
+      msgEl.textContent='云端连接超时，已切换至本地数据';
+      _syncModalOpen=false;
+      toastTimer=setTimeout(function(){t.classList.remove('show');},3000);
+    }
+  },10000);
 }
 
 function showToast(msg,type){
@@ -1264,13 +1279,25 @@ function showToast(msg,type){
   const icon=document.getElementById('toastIcon');
   const title=document.getElementById('toastTitle');
   const msgEl=document.getElementById('toastMsg');
+  clearTimeout(toastTimer);
+  clearTimeout(_syncSafetyTimer);
   t.className='toast show '+(type==='error'?'error':'success');
   icon.textContent=type==='error'?'✕':'✓';
   title.textContent=type==='error'?'同步失败':'同步完成';
   msgEl.textContent=msg;
-  clearTimeout(toastTimer);
+  _syncModalOpen=false;
   toastTimer=setTimeout(function(){t.classList.remove('show');},2200);
 }
+
+// 点击浮窗背景关闭
+document.getElementById('toast').addEventListener('click',function(e){
+  if(e.target===this||e.target.classList.contains('toast-backdrop')){
+    clearTimeout(toastTimer);
+    clearTimeout(_syncSafetyTimer);
+    this.classList.remove('show');
+    _syncModalOpen=false;
+  }
+});
 
 // ===== NAVIGATION =====
 function goDetail(id,type){
