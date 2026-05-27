@@ -421,6 +421,8 @@ async function cloudPushIncremental(url, data) {
       posters:   data.posters   || [],
       videos:    data.videos    || [],
       chars:     data.chars     || [],
+      bio:       data.bio       || {},
+      contact:   data.contact   || {},
       _ts:       data._ts
     });
     var payloadSize = payload.length;
