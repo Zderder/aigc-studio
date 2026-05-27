@@ -461,23 +461,71 @@
   }
   .table-empty .empty-icon{font-size:2rem;margin-bottom:10px;}
 
-  /* ===== TOAST ===== */
-  .toast{
-    position:fixed;bottom:28px;right:28px;z-index:600;
-    padding:12px 20px;border-radius:10px;
-    background:rgba(13,16,35,0.95);
-    border:1px solid rgba(34,197,94,0.3);
-    color:#86efac;
-    font-size:0.88rem;
-    transform:translateY(80px);opacity:0;
-    transition:all .3s;
-    pointer-events:none;
-    display:flex;align-items:center;gap:8px;
-    backdrop-filter:blur(12px);
-    box-shadow:0 8px 32px rgba(0,0,0,0.4);
-  }
-  .toast.error{border-color:rgba(239,68,68,0.3);color:#fca5a5;}
-  .toast.show{transform:translateY(0);opacity:1;}
+/* ===== TOAST (center modal style) ===== */
+.toast{
+  position:fixed;inset:0;z-index:700;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .25s;
+}
+.toast.show{opacity:1;pointer-events:auto;}
+.toast-inner{
+  min-width:260px;max-width:360px;
+  padding:32px 36px;border-radius:20px;
+  background:rgba(10,13,28,0.96);
+  border:1px solid rgba(124,58,237,0.25);
+  backdrop-filter:blur(24px);
+  box-shadow:0 24px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(124,58,237,0.08);
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  transform:scale(.88);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  text-align:center;
+}
+.toast.show .toast-inner{transform:scale(1);}
+/* syncing state */
+.toast-icon-wrap{
+  position:relative;width:64px;height:64px;
+  display:flex;align-items:center;justify-content:center;
+}
+.toast-ring{
+  position:absolute;inset:0;
+  border-radius:50%;
+  border:2.5px solid transparent;
+  border-top-color:#7c3aed;
+  border-right-color:#06b6d4;
+  animation:toast-spin 1s linear infinite;
+}
+.toast-ring2{
+  position:absolute;inset:6px;
+  border-radius:50%;
+  border:2px solid transparent;
+  border-bottom-color:#f59e0b;
+  border-left-color:#7c3aed;
+  animation:toast-spin 1.6s linear infinite reverse;
+}
+@keyframes toast-spin{to{transform:rotate(360deg);}}
+.toast-icon{font-size:1.8rem;position:relative;z-index:1;}
+.toast-title{
+  font-size:1.05rem;font-weight:700;letter-spacing:.03em;
+  color:#e2e8f0;
+}
+.toast-msg{
+  font-size:0.88rem;color:#94a3b8;line-height:1.6;
+}
+/* success state */
+.toast.success .toast-ring{border-top-color:#22c55e;border-right-color:#34d399;}
+.toast.success .toast-ring2{border-bottom-color:#22c55e;border-left-color:#06b6d4;animation:none;opacity:0;}
+/* error state */
+.toast.error .toast-ring{border-top-color:#ef4444;border-right-color:#f97316;animation:none;}
+.toast.error .toast-ring2{animation:none;opacity:0;}
+/* backdrop blur overlay */
+.toast-backdrop{
+  position:absolute;inset:0;
+  background:rgba(4,8,18,0.55);
+  backdrop-filter:blur(4px);
+  border-radius:0;
+}
 
   /* ===== SCROLLBAR ===== */
   ::-webkit-scrollbar{width:5px;}
@@ -1079,7 +1127,18 @@
 </div>
 
 <!-- TOAST -->
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast">
+  <div class="toast-backdrop"></div>
+  <div class="toast-inner">
+    <div class="toast-icon-wrap">
+      <div class="toast-ring"></div>
+      <div class="toast-ring2"></div>
+      <span class="toast-icon" id="toastIcon">☁️</span>
+    </div>
+    <div class="toast-title" id="toastTitle">正在同步</div>
+    <div class="toast-msg" id="toastMsg"></div>
+  </div>
+</div>
 
 <!-- CONFIRM -->
 <div class="confirm-overlay" id="confirmOverlay">
@@ -1414,6 +1473,7 @@ async function addWork(type){
     fileData.char=[];
   }
 
+  showSyncingModal();
   await saveData(data);
   resetForm(type);
   await refreshAll(data);
@@ -1421,7 +1481,8 @@ async function addWork(type){
   const verifyData=await getLocalData();
   const verifyItem=verifyData[type==='painting'?'paintings':type==='poster'?'posters':type==='video'?'videos':'chars'].find(i=>i.id===item.id);
   if(verifyItem){
-    showToast('作品添加成功 ✓');
+    var hasCloud=await getEffectiveCloudUrl();
+    if(!hasCloud) showToast('作品添加成功 ✓');
   }else{
     showToast('保存失败！存储空间可能已满，请删除部分作品后重试','error');
     // Re-add to fileData so user doesn't lose their upload
@@ -1475,7 +1536,7 @@ async function toggleVisible(type,id){
   else if(type==='video') arr=data.videos;
   else if(type==='char') arr=data.chars;
   const item=arr.find(i=>i.id===id);
-  if(item){item.visible=!item.visible;await saveData(data);await refreshAll(data);}
+  if(item){item.visible=!item.visible;showSyncingModal();await saveData(data);await refreshAll(data);}
   }catch(e){console.error('[AIGC] toggleVisible error:',e);showToast('操作出错','error');}
 }
 
@@ -1548,12 +1609,11 @@ async function handleDrop(e){
   const [moved]=arr.splice(srcIdx,1);
   arr.splice(dstIdx,0,moved);
 
+  showSyncingModal();
   await saveData(data);
   await refreshAll(data);
   dragState={type:null,srcIndex:-1,srcId:null};
 }
-
-// ===== BUTTON-BASED SORTING =====
 async function moveWork(type,id,direction){
   const data=await getLocalData();
   let arr;
@@ -1572,6 +1632,7 @@ async function moveWork(type,id,direction){
   arr[idx]=arr[newIdx];
   arr[newIdx]=tmp;
 
+  showSyncingModal();
   await saveData(data);
   await refreshAll(data);
 }
@@ -1595,10 +1656,12 @@ document.getElementById('confirmOk').onclick=async ()=>{
   else if(type==='poster') data.posters=data.posters.filter(i=>i.id!==id);
   else if(type==='video') data.videos=data.videos.filter(i=>i.id!==id);
   else if(type==='char') data.chars=data.chars.filter(i=>i.id!==id);
+  showSyncingModal();
   await saveData(data);
   closeConfirm();
   await refreshAll(data);
-  showToast('已删除作品');
+  var hasCloud=await getEffectiveCloudUrl();
+  if(!hasCloud) showToast('已删除作品');
   }catch(e){console.error('[AIGC] delete error:',e);closeConfirm();showToast('删除出错','error');}
 };
 
@@ -1772,9 +1835,11 @@ async function handleImport(e){
       if(!data.paintings||!data.posters||!data.videos||!data.chars){
         showToast('数据格式不正确','error');return;
       }
+      showSyncingModal();
       await saveData(data);
       await refreshAll();
-      showToast('数据导入成功 ✓');
+      var hasCloud=await getEffectiveCloudUrl();
+      if(!hasCloud) showToast('数据导入成功 ✓');
     }catch(err){
       showToast('解析失败，请检查文件格式','error');
     }
@@ -1890,11 +1955,11 @@ async function doUploadToCloud(){
   var config=getCloudConfig();
   if(!config.url){showToast('请先配置数据库地址','error');return;}
   setCloudStatus('正在同步数据到云端...',false);
+  showSyncingModal();
   var data=await getData();
   var result=await cloudPushUrl(config.url,data);
   if(result.ok){
     setCloudStatus('数据已同步到云端 ✓',false);
-    showToast('数据已同步到云端 ✓');
   }else{
     setCloudStatus('同步失败：'+(result.error||'请检查网络连接和数据库规则'),true);
     showToast('同步失败：'+(result.error||'未知错误'),'error');
@@ -1916,15 +1981,48 @@ function doDownloadConfig(){
 
 // ===== TOAST =====
 let toastTimer;
+let _syncModalOpen=false;
+
+// Show a transient result toast (success / error)
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
-  t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
-  t.className='toast'+(type==='error'?' error':'');
-  void t.offsetWidth;
-  t.classList.add('show');
+  const icon=document.getElementById('toastIcon');
+  const title=document.getElementById('toastTitle');
+  const msgEl=document.getElementById('toastMsg');
+
+  t.className='toast show '+(type==='error'?'error':'success');
+  icon.textContent=type==='error'?'✕':'✓';
+  title.textContent=type==='error'?'操作失败':'操作成功';
+  msgEl.textContent=msg;
+  _syncModalOpen=false;
+
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+  toastTimer=setTimeout(()=>{t.classList.remove('show');},2600);
 }
+
+// Show a "syncing to cloud" loading modal (stays until success/error event)
+function showSyncingModal(){
+  const t=document.getElementById('toast');
+  const icon=document.getElementById('toastIcon');
+  const title=document.getElementById('toastTitle');
+  const msgEl=document.getElementById('toastMsg');
+
+  clearTimeout(toastTimer);
+  t.className='toast show';
+  icon.textContent='☁️';
+  title.textContent='正在同步到云端';
+  msgEl.textContent='数据上传中，请稍候...';
+  _syncModalOpen=true;
+}
+
+// Click backdrop to dismiss manually
+document.getElementById('toast').addEventListener('click',function(e){
+  if(e.target===this||e.target.classList.contains('toast-backdrop')){
+    clearTimeout(toastTimer);
+    this.classList.remove('show');
+    _syncModalOpen=false;
+  }
+});
 
 // ===== INIT =====
 // Listen for cloud push failures from saveData()
@@ -1932,16 +2030,32 @@ window.addEventListener('aigc-cloud-error',function(e){
   console.warn('[AIGC Admin] Cloud push failed:',e.detail);
   showToast('云端同步失败：'+(e.detail||'请检查网络'),'error');
 });
-// Listen for cloud push success — show subtle sync indicator
+// Listen for cloud push success
 window.addEventListener('aigc-cloud-synced',function(){
+  // Update overview panel
   var el=document.getElementById('cloudInfoOverview');
-  if(!el)return;
-  var config=getCloudConfig();
-  if(config.enabled){
-    el.innerHTML='<span style="color:#22c55e;">☁️ 云端同步: 已启用 · 刚刚同步 ✓</span>';
-    el.style.background='rgba(34,197,94,0.06)';
-    el.style.border='1px solid rgba(34,197,94,0.15)';
-    setTimeout(function(){ updateCloudInfoOverview(config); },4000);
+  if(el){
+    var config=getCloudConfig();
+    if(config.enabled){
+      el.innerHTML='<span style="color:#22c55e;">☁️ 云端同步: 已启用 · 刚刚同步 ✓</span>';
+      el.style.background='rgba(34,197,94,0.06)';
+      el.style.border='1px solid rgba(34,197,94,0.15)';
+      setTimeout(function(){ updateCloudInfoOverview(config); },4000);
+    }
+  }
+  // If syncing modal is open, transition to success state
+  if(_syncModalOpen){
+    const t=document.getElementById('toast');
+    const icon=document.getElementById('toastIcon');
+    const title=document.getElementById('toastTitle');
+    const msgEl=document.getElementById('toastMsg');
+    t.className='toast show success';
+    icon.textContent='✓';
+    title.textContent='同步完成';
+    msgEl.textContent='数据已成功上传至云端';
+    _syncModalOpen=false;
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
   }
 });
 
@@ -2204,10 +2318,12 @@ async function saveEdit(){
       item.thumb = editState.thumb;
     }
 
+    showSyncingModal();
     await saveData(data);
     await refreshAll(data);
     closeEditModal();
-    showToast('作品信息已更新 ✓');
+    var hasCloud=await getEffectiveCloudUrl();
+    if(!hasCloud) showToast('作品信息已更新 ✓');
   }catch(e){
     console.error('[AIGC] saveEdit error:',e);
     showToast('保存失败：'+e.message,'error');
@@ -2252,8 +2368,12 @@ async function saveBio(){
       desc:document.getElementById('bio-desc').value.trim(),
       tags:tags
     };
+    showSyncingModal();
     await saveData(data);
-    showToast('✅ 个人简介已保存','success');
+    // If no cloud configured, skip to local-only success
+    var cfg=getCloudConfig();
+    var hasCloud=await getEffectiveCloudUrl();
+    if(!hasCloud) showToast('个人简介已保存（本地）','success');
   }catch(e){console.error('saveBio:',e);showToast('保存失败','error');}
 }
 
@@ -2266,8 +2386,11 @@ async function saveContact(){
       wechat:document.getElementById('contact-wechat').value.trim(),
       extra:document.getElementById('contact-extra').value.trim()
     };
+    showSyncingModal();
     await saveData(data);
-    showToast('✅ 联系方式已保存','success');
+    // If no cloud configured, skip to local-only success
+    var hasCloud=await getEffectiveCloudUrl();
+    if(!hasCloud) showToast('联系方式已保存（本地）','success');
   }catch(e){console.error('saveContact:',e);showToast('保存失败','error');}
 }
 </script>
