@@ -1223,7 +1223,6 @@ async function renderAll(){
     sessionStorage.removeItem('aigc_skip_sync');
     return;
   }
-  var cloudUpdated=false;
   try {
     const cloudUrl = await getEffectiveCloudUrl();
     if (!cloudUrl) return; // no cloud configured, done
@@ -1242,15 +1241,14 @@ async function renderAll(){
         renderChars(cloudData);
         updateStats(cloudData);
         console.log('[AIGC] Phase 2: updated with newer cloud data (ts:' + cloudTs + ')');
-        cloudUpdated=true;
       }
     }
+    // 数据加载完成（无论是否有更新），统一显示同步完成动画
+    showToast('数据已与云端同步 ✓');
   } catch(e) {
     console.warn('[AIGC] Phase 2 cloud fetch failed:', e);
-    showToast('请检查网络连接','error');
-    return;
+    showToast('请关闭无线网络使用移动网络尝试加载','error');
   }
-  if(cloudUpdated){showToast('数据已与云端同步 ✓');}else{var t=document.getElementById('toast');clearTimeout(_syncSafetyTimer);_syncModalOpen=false;t.classList.remove('show');}
 }
 
 // ===== SYNC TOAST =====
