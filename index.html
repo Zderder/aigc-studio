@@ -871,7 +871,7 @@
   var nodes=[];
   function initNodes(){
     nodes=[];
-    for(var i=0;i<28;i++){
+    for(var i=0;i<48;i++){
       nodes.push({x:W*0.1+Math.random()*W*0.8,y:H*0.1+Math.random()*H*0.8,
         r:1.5+Math.random()*3.5,pulse:Math.random()*Math.PI*2,ps:0.006+Math.random()*0.018,connections:[]});
     }
@@ -891,7 +891,7 @@
   var shapes=[];
   function initShapes(){
     shapes=[];
-    for(var i=0;i<120;i++){
+    for(var i=0;i<220;i++){
       var sx=Math.random()*W,sy=Math.random()*H;
       shapes.push({ox:sx,oy:sy,x:sx,y:sy,
         vx:(Math.random()-0.5)*0.35,vy:(Math.random()-0.5)*0.35,
@@ -906,7 +906,7 @@
   var particles=[];
   function initParticles(){
     particles=[];
-    for(var i=0;i<18;i++){
+    for(var i=0;i<32;i++){
       particles.push({x:Math.random()*W,y:Math.random()*H,
         vx:(Math.random()-0.5)*0.12,vy:(Math.random()-0.5)*0.12-0.04,
         r:0.3+Math.random()*1,pulse:Math.random()*Math.PI*2,ps:0.008+Math.random()*0.022,
@@ -969,8 +969,8 @@
       for(var gj=gi+1;gj<shapes.length;gj++){
         var gdx=shapes[gi].x-shapes[gj].x,gdy=shapes[gi].y-shapes[gj].y;
         var gd=gdx*gdx+gdy*gdy;
-        if(gd<200*200){
-          var ga=Math.sqrt(gd),glAlpha=(1-ga/200)*0.55;
+        if(gd<240*240){
+          var ga=Math.sqrt(gd),glAlpha=(1-ga/240)*0.55;
           ctx.strokeStyle='rgba(124,58,237,'+glAlpha.toFixed(3)+')';ctx.lineWidth=0.8;
           ctx.beginPath();ctx.moveTo(shapes[gi].x,shapes[gi].y);ctx.lineTo(shapes[gj].x,shapes[gj].y);ctx.stroke();
         }
@@ -1271,12 +1271,7 @@ function showSyncingModal(){
   // 安全兜底：最多 10 秒后自动隐藏，防止网络请求挂住导致浮窗不消失
   _syncSafetyTimer=setTimeout(function(){
     if(_syncModalOpen){
-      t.className='toast show error';
-      icon.textContent='✕';
-      title.textContent='同步超时';
-      msgEl.textContent='云端连接超时，已切换至本地数据';
-      _syncModalOpen=false;
-      toastTimer=setTimeout(function(){t.classList.remove('show');},3000);
+      showToast('请关闭无线网络使用移动网络尝试加载','error');
     }
   },10000);
 }
