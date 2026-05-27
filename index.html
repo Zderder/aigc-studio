@@ -852,6 +852,8 @@
   var mx=window.innerWidth/2,my=window.innerHeight/2;
   var smx=mx,smy=my,pmx=mx,pmy=my,mSpeed=0;
   var mouseMoved=false;
+  var mouseStopTimer=null;
+  var MOUSE_STOP_DELAY=200; // 200ms 无移动视为鼠标停止
 
   function resize(){
     W=canvas.width=window.innerWidth;
@@ -859,8 +861,10 @@
   }
 
   window.addEventListener('mousemove',function(e){
-    if(!mouseMoved){mouseMoved=true;smx=mx=e.clientX;smy=my=e.clientY;return;}
-    pmx=mx;pmy=my;mx=e.clientX;my=e.clientY;
+    clearTimeout(mouseStopTimer);
+    if(!mouseMoved){mouseMoved=true;smx=mx=e.clientX;smy=my=e.clientY;}
+    else{pmx=mx;pmy=my;mx=e.clientX;my=e.clientY;}
+    mouseStopTimer=setTimeout(function(){mouseMoved=false;},MOUSE_STOP_DELAY);
   });
 
   // ===== NEURAL NODES =====
@@ -1214,6 +1218,11 @@ async function renderAll(){
   }
 
   // Phase 2: try cloud in background, re-render only if newer
+  // 从详情页返回时跳过云端同步，避免不必要的加载
+  if(sessionStorage.getItem('aigc_skip_sync')==='1'){
+    sessionStorage.removeItem('aigc_skip_sync');
+    return;
+  }
   var cloudUpdated=false;
   try {
     const cloudUrl = await getEffectiveCloudUrl();
@@ -1302,6 +1311,7 @@ document.getElementById('toast').addEventListener('click',function(e){
 // ===== NAVIGATION =====
 function goDetail(id,type){
   sessionStorage.setItem('aigc_scroll_y', window.scrollY);
+  sessionStorage.setItem('aigc_skip_sync', '1');
   window.location.href='detail.html?id='+encodeURIComponent(id)+'&type='+encodeURIComponent(type);
 }
 
