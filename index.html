@@ -1112,7 +1112,7 @@ function renderPosters(data){
   }
   grid.innerHTML=items.map(item=>{
     const imgs=item.imgs&&item.imgs.length?item.imgs:(item.img?[item.img]:[]);
-    const cover=imgs[0]||'';
+    const cover=item.thumb||imgs[0]||'';
     const countBadge=imgs.length>1?`<span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:100px;z-index:2;backdrop-filter:blur(4px);">&#x1f5bc;&#xfe0f; ${imgs.length}</span>`:'';
     return `
     <div class="art-card" onclick="goDetail('${item.id}','poster')">
@@ -1126,7 +1126,7 @@ function renderPosters(data){
         <div class="art-card-title">${item.title||'无标题'}</div>
         <div class="art-card-desc">${item.desc||''}</div>
         <div class="art-card-footer">
-          <span class="art-badge badge-poster">AI海报</span>
+          <span class="art-badge badge-poster">图片作品</span>
           <span class="art-card-like">♡ ${item.likes||0}</span>
         </div>
       </div>
@@ -1190,7 +1190,7 @@ function renderChars(data){
   }
   grid.innerHTML=items.map(item=>{
     const imgs=item.imgs&&item.imgs.length?item.imgs:(item.img?[item.img]:[]);
-    const cover=imgs[0]||'';
+    const cover=item.thumb||imgs[0]||'';
     const countBadge=imgs.length>1?`<span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:100px;z-index:2;backdrop-filter:blur(4px);">&#x1f5bc;&#xfe0f; ${imgs.length}</span>`:'';
     return `
     <div class="art-card" onclick="goDetail('${item.id}','char')">

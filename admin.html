@@ -662,15 +662,15 @@
         <span class="nav-icon">📊</span> 总览
       </div>
       <div class="nav-item" data-tab="painting" onclick="switchTab('painting',this)">
-        <span class="nav-icon">🎨</span> AI绘画
+        <span class="nav-icon">🎨</span> IP形象
         <span class="nav-badge" id="badge-painting">0</span>
       </div>
       <div class="nav-item" data-tab="poster" onclick="switchTab('poster',this)">
-        <span class="nav-icon">🪧</span> AI海报
+        <span class="nav-icon">🪧</span> 图片作品
         <span class="nav-badge" id="badge-poster">0</span>
       </div>
       <div class="nav-item" data-tab="video" onclick="switchTab('video',this)">
-        <span class="nav-icon">🎬</span> AI视频
+        <span class="nav-icon">🎬</span> 视频作品
         <span class="nav-badge" id="badge-video">0</span>
       </div>
       <div class="nav-item" data-tab="char" onclick="switchTab('char',this)">
@@ -709,17 +709,17 @@
             <div class="stat-card-sub">已上架作品</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">AI绘画</div>
+            <div class="stat-card-label">IP形象</div>
             <div class="stat-card-num purple" id="ov-painting">0</div>
             <div class="stat-card-sub">件作品</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">AI海报</div>
+            <div class="stat-card-label">图片作品</div>
             <div class="stat-card-num amber" id="ov-poster">0</div>
             <div class="stat-card-sub">件作品</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">AI视频</div>
+            <div class="stat-card-label">视频作品</div>
             <div class="stat-card-num pink" id="ov-video">0</div>
             <div class="stat-card-sub">件作品</div>
           </div>
@@ -789,14 +789,14 @@
         </div>
       </div>
 
-      <!-- ===== AI 海报 ===== -->
+      <!-- ===== 图片作品 ===== -->
       <div class="tab-panel" id="tab-poster">
         <div class="upload-area">
-          <h3>🪧 上传 AI 海报作品</h3>
+          <h3>🪧 上传图片作品</h3>
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">海报标题 *</label>
-              <input class="form-input" id="po-title" placeholder="输入海报名称">
+              <label class="form-label">作品标题 *</label>
+              <input class="form-input" id="po-title" placeholder="输入作品名称">
             </div>
             <div class="form-group">
               <label class="form-label">设计工具</label>
@@ -804,7 +804,7 @@
             </div>
             <div class="form-group full">
               <label class="form-label">作品描述</label>
-              <textarea class="form-textarea" id="po-desc" placeholder="描述这张海报的主题、风格或使用场景..."></textarea>
+              <textarea class="form-textarea" id="po-desc" placeholder="描述这张作品的主题、风格或使用场景..."></textarea>
             </div>
             <div class="form-group full">
               <label class="form-label">上传图片（可多选）</label>
@@ -821,6 +821,20 @@
               <input type="file" id="po-img-input" class="upload-hidden" accept="image/*" multiple
                 onchange="previewMultipleFiles(this,'poster')">
             </div>
+            <div class="form-group full">
+              <label class="form-label">封面图片（可选，不填则使用第一张图）</label>
+              <div class="file-upload-zone" id="po-thumb-zone"
+                ondragover="dragOver(event,'po-thumb-zone')"
+                ondragleave="dragLeave('po-thumb-zone')"
+                ondrop="dropFile(event,'po-thumb-input','po-thumb-preview')"
+                onclick="document.getElementById('po-thumb-input').click()">
+                <div class="file-upload-icon">🖼️</div>
+                <div class="file-upload-text">拖拽封面图到此处，或 <span>点击选择</span></div>
+                <img id="po-thumb-preview" class="file-preview" alt="封面预览">
+              </div>
+              <input type="file" id="po-thumb-input" class="upload-hidden" accept="image/*"
+                onchange="previewFile(this,'po-thumb-preview','po-thumb-zone')">
+            </div>
           </div>
           <div class="form-actions">
             <button class="btn-submit" onclick="addWork('poster')">✓ 添加作品</button>
@@ -829,7 +843,7 @@
         </div>
         <div class="works-table-wrap">
           <div class="works-table-header">
-            <h3>海报列表</h3>
+            <h3>图片作品列表</h3>
             <div class="filter-tabs">
               <button class="filter-tab active" onclick="filterWorks('poster','all',this)">全部</button>
               <button class="filter-tab" onclick="filterWorks('poster','visible',this)">已上架</button>
@@ -939,7 +953,7 @@
               <textarea class="form-textarea" id="c-desc" placeholder="描述字符艺术的创意与内涵..."></textarea>
             </div>
             <div class="form-group full">
-              <label class="form-label">关联图片（可选，可多选）</label>
+              <label class="form-label">作品图片（可选，可多选）</label>
               <div class="file-upload-zone" id="c-zone"
                 ondragover="dragOver(event,'c-zone')"
                 ondragleave="dragLeave('c-zone')"
@@ -952,6 +966,20 @@
               </div>
               <input type="file" id="c-img-input" class="upload-hidden" accept="image/*" multiple
                 onchange="previewMultipleFiles(this,'char')">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">封面图片（可选，不填则使用第一张图）</label>
+              <div class="file-upload-zone" id="c-thumb-zone"
+                ondragover="dragOver(event,'c-thumb-zone')"
+                ondragleave="dragLeave('c-thumb-zone')"
+                ondrop="dropFile(event,'c-thumb-input','c-thumb-preview')"
+                onclick="document.getElementById('c-thumb-input').click()">
+                <div class="file-upload-icon">🖼️</div>
+                <div class="file-upload-text">拖拽封面图到此处，或 <span>点击选择</span></div>
+                <img id="c-thumb-preview" class="file-preview" alt="封面预览">
+              </div>
+              <input type="file" id="c-thumb-input" class="upload-hidden" accept="image/*"
+                onchange="previewFile(this,'c-thumb-preview','c-thumb-zone')">
             </div>
           </div>
           <div class="form-actions">
@@ -1203,13 +1231,13 @@ function switchTab(tab,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(el) el.classList.add('active');
-  const titles={overview:'总览',painting:'AI绘画管理',poster:'AI海报管理',video:'AI视频管理',char:'超级字符管理',pagecontent:'页面内容',settings:'设置'};
+  const titles={overview:'总览',painting:'IP形象管理',poster:'图片作品管理',video:'视频作品管理',char:'超级字符管理',pagecontent:'页面内容',settings:'设置'};
   document.getElementById('topbarTitle').textContent=titles[tab]||tab;
   if(tab==='pagecontent') loadPageContent();
 }
 
 // ===== FILE HANDLING =====
-let fileData={painting:[],poster:[],video:null,videoFile:null,char:[]};
+let fileData={painting:[],poster:[],posterThumb:null,video:null,videoFile:null,char:[],charThumb:null};
 let videoMode='file'; // 'file' | 'url'
 
 function switchVideoMode(mode){
@@ -1265,6 +1293,8 @@ function previewFile(input,previewId,zoneId){
     preview.src=dataUrl;
     preview.style.display='block';
     if(input.id==='v-img-input') fileData.video=dataUrl;
+    if(input.id==='po-thumb-input') fileData.posterThumb=dataUrl;
+    if(input.id==='c-thumb-input') fileData.charThumb=dataUrl;
   };
   reader.readAsDataURL(file);
 }
@@ -1433,14 +1463,16 @@ async function addWork(type){
     fileData.painting=[];
   }else if(type==='poster'){
     const title=document.getElementById('po-title').value.trim();
-    if(!title){showToast('请填写海报标题','error');return;}
+    if(!title){showToast('请填写作品标题','error');return;}
     item.title=title;
     item.tool=document.getElementById('po-tool').value.trim();
     item.desc=document.getElementById('po-desc').value.trim();
     item.imgs=[...fileData.poster];
     item.img=item.imgs[0]||'';
+    item.thumb=fileData.posterThumb||item.img;
     data.posters.push(item);
     fileData.poster=[];
+    fileData.posterThumb=null;
   }else if(type==='video'){
     const title=document.getElementById('v-title').value.trim();
     if(!title){showToast('请填写视频标题','error');return;}
@@ -1469,8 +1501,10 @@ async function addWork(type){
     item.desc=document.getElementById('c-desc').value.trim();
     item.imgs=[...fileData.char];
     item.img=item.imgs[0]||'';
+    item.thumb=fileData.charThumb||item.img;
     data.chars.push(item);
     fileData.char=[];
+    fileData.charThumb=null;
   }
 
   showSyncingModal();
@@ -1487,8 +1521,8 @@ async function addWork(type){
     showToast('保存失败！存储空间可能已满，请删除部分作品后重试','error');
     // Re-add to fileData so user doesn't lose their upload
     if(type==='painting') fileData.painting=item.imgs||[];
-    else if(type==='poster') fileData.poster=item.imgs||[];
-    else if(type==='char') fileData.char=item.imgs||[];
+    else if(type==='poster'){fileData.poster=item.imgs||[];fileData.posterThumb=item.thumb||null;}
+    else if(type==='char'){fileData.char=item.imgs||[];fileData.charThumb=item.thumb||null;}
   }
   }catch(e){
     console.error('[AIGC] addWork error:',e);
@@ -1507,7 +1541,10 @@ function resetForm(type){
     ['po-title','po-tool','po-desc'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('po-previews').innerHTML='';
     document.getElementById('po-img-input').value='';
+    document.getElementById('po-thumb-preview').style.display='none';
+    document.getElementById('po-thumb-input').value='';
     fileData.poster=[];
+    fileData.posterThumb=null;
   }else if(type==='video'){
     ['v-title','v-tool','v-url','v-desc'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('v-thumb-preview').style.display='none';
@@ -1522,7 +1559,10 @@ function resetForm(type){
     ['c-title','c-char','c-desc'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('c-previews').innerHTML='';
     document.getElementById('c-img-input').value='';
+    document.getElementById('c-thumb-preview').style.display='none';
+    document.getElementById('c-thumb-input').value='';
     fileData.char=[];
+    fileData.charThumb=null;
   }
 }
 
