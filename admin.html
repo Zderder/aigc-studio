@@ -2211,6 +2211,15 @@ async function openEditModal(type, id){
       <div class="edit-images-preview" id="editImgPreview"></div>
       <input type="file" id="edit-img-input" class="upload-hidden" accept="image/*" multiple onchange="editAddImages(this)">
     </div>`;
+    // Poster and painting support cover upload
+    if(type === 'poster' || type === 'painting'){
+      fields += `
+    <div class="form-group full">
+      <label class="form-label">封面图片<span style="font-size:0.75rem;color:#888;margin-left:6px;">（不设置则默认取第一张图片）</span></label>
+      <div class="edit-images-preview" id="editThumbPreview"></div>
+      <input type="file" id="edit-thumb-input" class="upload-hidden" accept="image/*" onchange="editAddThumb(this)">
+    </div>`;
+    }
   }
 
   // Video: url / thumb
@@ -2236,6 +2245,9 @@ async function openEditModal(type, id){
   // Render existing images
   if(type !== 'video'){
     renderEditImgPreview();
+    if(type === 'poster' || type === 'painting'){
+      renderEditThumbPreview();
+    }
   } else {
     renderEditThumbPreview();
   }
@@ -2349,6 +2361,10 @@ async function saveEdit(){
     if(type !== 'video'){
       item.imgs = [...editState.imgs];
       item.img = item.imgs[0] || '';
+      // Save cover for poster and painting
+      if(type === 'poster' || type === 'painting'){
+        item.thumb = editState.thumb;
+      }
     } else {
       // Only update URL if not local video
       if(!item.videoData){
