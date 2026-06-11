@@ -296,20 +296,6 @@
     font-size:2.5rem;
     background:linear-gradient(135deg,#0d1030,#2d0a22);
   }
-  .play-btn{
-    position:absolute;top:50%;left:50%;
-    transform:translate(-50%,-50%);
-    width:52px;height:52px;border-radius:50%;
-    background:rgba(236,72,153,0.8);
-    display:flex;align-items:center;justify-content:center;
-    transition:background .2s,transform .2s;
-    backdrop-filter:blur(8px);
-  }
-  .video-card:hover .play-btn{
-    background:rgba(236,72,153,1);
-    transform:translate(-50%,-50%) scale(1.1);
-  }
-  .play-btn svg{width:20px;height:20px;fill:#fff;margin-left:3px;}
   .video-info{padding:14px 16px 16px;}
   .video-title{font-size:0.95rem;font-weight:600;margin-bottom:4px;}
   .video-meta{font-size:0.8rem;color:var(--text-secondary);}
@@ -1152,9 +1138,6 @@ function renderVideos(data){
           <div class="video-thumb">
             ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy" decoding="async">`
               :`<div class="placeholder-art">🎬</div>`}
-            <div class="play-btn">
-              <svg viewBox="0 0 20 20"><polygon points="5,3 19,10 5,17"/></svg>
-            </div>
           </div>
           <div class="video-info">
             <div class="video-title">${item.title||'无标题'}</div>
@@ -1162,15 +1145,12 @@ function renderVideos(data){
           </div>
         </div>`;
     }else{
-      // URL mode: show thumb + play button → open in new tab or lightbox
+      // URL mode: show thumb → open in new tab or lightbox
       return `
         <div class="video-card" onclick="goDetail('${item.id}','video')" style="cursor:pointer;">
           <div class="video-thumb">
             ${item.thumb?`<img src="${item.thumb}" alt="${item.title}" loading="lazy" decoding="async">`
               :`<div class="placeholder-art">🎬</div>`}
-            <div class="play-btn">
-              <svg viewBox="0 0 20 20"><polygon points="5,3 19,10 5,17"/></svg>
-            </div>
           </div>
           <div class="video-info">
             <div class="video-title">${item.title||'无标题'}</div>
